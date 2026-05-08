@@ -11,34 +11,42 @@ import { cookies } from 'next/headers';
 
 async function sendWhatsAppOTP(phoneNumber: string, code: string): Promise<boolean> {
   try {
-    // WhatsApp Business API integration
-    // const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
-    // const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+    const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
     
-    // const message = `كود التحقق الخاص بك هو: ${code}\nيرجى عدم مشاركته مع أي شخص آخر.`;
+    // If WhatsApp credentials are configured, send real message
+    if (accessToken && phoneNumberId) {
+      const message = `كود التحقق الخاص بك هو: ${code}\nيرجى عدم مشاركته مع أي شخص آخر.`;
+      
+      const response = await fetch(
+        `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            to: phoneNumber,
+            type: 'text',
+            text: { body: message },
+          }),
+        }
+      );
+      
+      const data = await response.json();
+      if (!response.ok) {
+        console.error('WhatsApp API error:', data);
+        return false;
+      }
+      return true;
+    }
     
-    // const response = await fetch(
-    //   `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`,
-    //   {
-    //     method: 'POST',
-    //     headers: {
-    //       'Authorization': `Bearer ${accessToken}`,
-    //       'Content-Type': 'application/json',
-    //     },
-    //     body: JSON.stringify({
-    //       messaging_product: 'whatsapp',
-    //       to: phoneNumber,
-    //       type: 'text',
-    //       text: { body: message },
-    //     }),
-    //   }
-    // );
-    
-    // const data = await response.json();
-    // return data.success || false;
-    
-    // For development/demo: log the code
+    // For development/demo: log the code prominently
+    console.log('========================================');
     console.log(`[WhatsApp OTP] To ${phoneNumber}: Your verification code is ${code}`);
+    console.log('========================================');
     return true;
   } catch (error) {
     console.error('Failed to send WhatsApp OTP:', error);

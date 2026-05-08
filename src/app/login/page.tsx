@@ -21,6 +21,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Leaf, Loader2, Phone, KeyRound } from 'lucide-react';
 import { supabase } from '@/supabase/client';
 import { useRouter } from 'next/navigation';
@@ -28,6 +29,25 @@ import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/context/language-provider';
 import { useSupabase } from '@/supabase/provider';
 import { createServerSupabaseClient } from '@/supabase/server';
+
+// Common country codes
+const countryCodes = [
+  { code: '+20', country: 'Egypt', flag: '🇪🇬' },
+  { code: '+966', country: 'Saudi Arabia', flag: '🇸🇦' },
+  { code: '+971', country: 'UAE', flag: '🇦🇪' },
+  { code: '+974', country: 'Qatar', flag: '🇶🇦' },
+  { code: '+965', country: 'Kuwait', flag: '🇰🇼' },
+  { code: '+968', country: 'Oman', flag: '🇴🇲' },
+  { code: '+973', country: 'Bahrain', flag: '🇧🇭' },
+  { code: '+962', country: 'Jordan', flag: '🇯🇴' },
+  { code: '+961', country: 'Lebanon', flag: '🇱🇧' },
+  { code: '+963', country: 'Syria', flag: '🇸🇾' },
+  { code: '+218', country: 'Libya', flag: '🇱🇾' },
+  { code: '+1', country: 'USA/Canada', flag: '🇺🇸' },
+  { code: '+44', country: 'UK', flag: '🇬🇧' },
+  { code: '+49', country: 'Germany', flag: '🇩🇪' },
+  { code: '+33', country: 'France', flag: '🇫🇷' },
+];
 
 // Steps in the hybrid auth flow
 type AuthStep = 'email_password' | 'whatsapp_verify' | 'complete_profile';
@@ -332,11 +352,34 @@ export default function LoginPage() {
                       <FormLabel>WhatsApp Number</FormLabel>
                       <FormControl>
                         <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-muted-foreground" />
+                          <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <Select
+                            value={field.value.split(' ')[0] || '+20'}
+                            onValueChange={(code) => {
+                              const number = field.value.split(' ')[1] || '';
+                              field.onChange(`${code} ${number}`.trim());
+                            }}
+                          >
+                            <SelectTrigger className="w-[140px] shrink-0">
+                              <SelectValue placeholder="Code" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {countryCodes.map((item) => (
+                                <SelectItem key={item.code} value={item.code}>
+                                  {item.flag} {item.code} {item.country}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <Input
-                            placeholder="+201234567890"
-                            {...field}
+                            placeholder="1234567890"
+                            value={field.value.split(' ')[1] || ''}
+                            onChange={(e) => {
+                              const code = field.value.split(' ')[0] || '+20';
+                              field.onChange(`${code} ${e.target.value}`.trim());
+                            }}
                             disabled={isLoading}
+                            className="flex-1"
                           />
                         </div>
                       </FormControl>
