@@ -124,11 +124,6 @@ export const defaultSiteCategories: SiteCategory[] = [
         url: 'https://www.project44.com/resources/api-documentation/ocean-shipping',
       },
       {
-        titleKey: 'siteFirestoreBestPracticesTitle',
-        descriptionKey: 'siteFirestoreBestPracticesDesc',
-        url: 'https://firebase.google.com/docs/firestore/best-practices',
-      },
-      {
         titleKey: 'siteAgriErpTitle',
         descriptionKey: 'siteAgriErpDesc',
         url: 'https://www.sap.com/africa/industries/agribusiness.html',

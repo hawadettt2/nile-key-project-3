@@ -74,7 +74,7 @@ function HarvestAdvisor() {
             {isLoading && (
                 <div className="flex items-center justify-center p-8">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <p className="mx-4 text-muted-foreground">{t.geminiAnalyzing}</p>
+                  <p className="mx-4 text-muted-foreground">Analyzing...</p>
                 </div>
             )}
             {result && (
@@ -148,7 +148,7 @@ function MarketOpportunityFinder() {
             {isLoading && (
                 <div className="flex items-center justify-center p-8">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <p className="mx-4 text-muted-foreground">{t.geminiAnalyzing}</p>
+                  <p className="mx-4 text-muted-foreground">Analyzing...</p>
                 </div>
             )}
             {result && (

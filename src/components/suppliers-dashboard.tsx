@@ -163,7 +163,7 @@ export function SuppliersDashboard() {
               {isSearching ? (
                 <div className="flex items-center justify-center p-8">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <p className="mx-4 text-muted-foreground">{t.geminiAnalyzing}</p>
+                  <p className="mx-4 text-muted-foreground">Analyzing...</p>
                 </div>
               ) : searchResults && searchResults.suppliers && searchResults.suppliers.length > 0 ? (
                 <div className="space-y-4">
