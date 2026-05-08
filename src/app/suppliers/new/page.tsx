@@ -1,4 +1,5 @@
 'use client';
+
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { Header } from "@/components/layout/header";
@@ -13,8 +14,8 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { PlusCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useUser, useFirestore, addDocumentNonBlocking } from '@/firebase';
-import { collection, serverTimestamp } from 'firebase/firestore';
+import { useSupabase } from '@/supabase/provider';
+import { supabase } from '@/supabase/client';
 import { useLanguage } from '@/context/language-provider';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -22,8 +23,7 @@ function AddSupplierForm() {
     const { language, t } = useLanguage();
     const router = useRouter();
     const { toast } = useToast();
-    const { user } = useUser();
-    const firestore = useFirestore();
+    const { user } = useSupabase();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const supplierSchema = z.object({
@@ -58,8 +58,22 @@ function AddSupplierForm() {
         }
         setIsSubmitting(true);
         try {
-          const collectionRef = collection(firestore, 'users', user.uid, 'suppliers');
-          await addDocumentNonBlocking(collectionRef, { ...values, createdAt: serverTimestamp() });
+          const { error } = await supabase
+            .from('suppliers')
+            .insert({
+              user_id: user.id,
+              farm_name: values.farmName,
+              codification_code: values.codificationCode || null,
+              crop_varieties: values.cropVarieties,
+              certification_status: values.certificationStatus,
+              location: values.location,
+              gps_location: values.gpsLocation || null,
+              capacity: values.capacity || null,
+              contact_number: values.contactNumber,
+            });
+
+          if (error) throw error;
+
           toast({ title: t.addSupplierSuccessTitle, description: t.addSupplierSuccessDescription });
           form.reset();
           router.push('/suppliers');
@@ -74,10 +88,10 @@ function AddSupplierForm() {
     return (
         <Card>
             <CardHeader>
-            <CardTitle className="font-headline flex items-center gap-2">
-                <PlusCircle className="h-6 w-6" /> {t.addPageTitleSuppliers}
-            </CardTitle>
-            <CardDescription>{t.addPageDescriptionSuppliers}</CardDescription>
+                <CardTitle className="font-headline flex items-center gap-2">
+                    <PlusCircle className="h-6 w-6" /> {t.addPageTitleSuppliers}
+                </CardTitle>
+                <CardDescription>{t.addPageDescriptionSuppliers}</CardDescription>
             </CardHeader>
             <CardContent>
             <Form {...form}>

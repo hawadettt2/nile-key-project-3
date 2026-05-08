@@ -15,8 +15,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Textarea } from '@/components/ui/textarea';
 import { PlusCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useUser, useFirestore, addDocumentNonBlocking } from '@/firebase';
-import { collection, serverTimestamp } from 'firebase/firestore';
+import { useSupabase } from '@/supabase/provider';
+import { supabase } from '@/supabase/client';
 import { useLanguage } from '@/context/language-provider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { governorates } from "@/lib/governorates";
@@ -25,8 +25,7 @@ function AddNfsaSupplierForm() {
     const { language, t } = useLanguage();
     const router = useRouter();
     const { toast } = useToast();
-    const { user } = useUser();
-    const firestore = useFirestore();
+    const { user } = useSupabase();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const supplierSchema = z.object({
@@ -57,8 +56,20 @@ function AddNfsaSupplierForm() {
         }
         setIsSubmitting(true);
         try {
-          const collectionRef = collection(firestore, 'users', user.uid, 'nfsaSuppliers');
-          await addDocumentNonBlocking(collectionRef, { ...values, createdAt: serverTimestamp() });
+          const { error } = await supabase
+            .from('nfsa_whitelist')
+            .insert({
+              user_id: user.id,
+              supplier_name: values.supplierName,
+              address: values.address,
+              governorate: values.governorate,
+              activity_type: values.activityType,
+              phone_number: values.phoneNumber || null,
+              notes: values.notes || null,
+            });
+
+          if (error) throw error;
+
           toast({ title: t.addNfsaSupplierSuccess });
           form.reset();
           router.push('/suppliers/whitelist');
@@ -89,27 +100,27 @@ function AddNfsaSupplierForm() {
                                 <FormItem><FormLabel>{t.formActivityLabel}</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                         </div>
-                         <FormField
+                        <FormField
                             control={form.control}
                             name="governorate"
                             render={({ field }) => (
                                 <FormItem>
-                                <FormLabel>{t.formGovernorateLabel}</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder={t.filterByGovernoratePlaceholder} />
-                                    </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                    {governorates.map(gov => (
-                                        <SelectItem key={gov.code} value={language === 'ar' ? gov.ar : gov.en}>
-                                        {language === 'ar' ? gov.ar : gov.en}
-                                        </SelectItem>
-                                    ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
+                                    <FormLabel>{t.formGovernorateLabel}</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder={t.filterByGovernoratePlaceholder} />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            {governorates.map(gov => (
+                                                <SelectItem key={gov.code} value={language === 'ar' ? gov.ar : gov.en}>
+                                                    {language === 'ar' ? gov.ar : gov.en}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
                                 </FormItem>
                             )}
                         />

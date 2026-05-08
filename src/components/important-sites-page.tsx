@@ -12,10 +12,10 @@ import {
 } from "@/components/ui/accordion";
 import { Button } from "./ui/button";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
-import { useCollection, useDoc, useFirestore, useUser } from '@/firebase';
-import { collection, doc, DocumentReference, query, orderBy } from 'firebase/firestore';
+import { useSupabase } from '@/supabase/provider';
+import { supabase } from '@/supabase/client';
 import { Skeleton } from './ui/skeleton';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { DeleteCategoryAlert } from './delete-category-alert';
 import { AddSiteDialog } from './add-site-dialog';
 import { defaultSiteCategories } from '@/lib/default-sites';
@@ -35,11 +35,14 @@ const iconComponents: { [key: string]: React.ReactNode } = {
   Default: <Globe className="h-8 w-8" />,
 };
 
-export function ImportantSitesPage() {
+interface ImportantSitesPageProps {
+  categoryId?: string;
+}
+
+export function ImportantSitesPage({ categoryId: propCategoryId }: ImportantSitesPageProps) {
   const params = useParams();
-  const categoryId = params.categoryId as string;
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const categoryId = propCategoryId || params.categoryId as string;
+  const { user, isLoading: isUserLoading } = useSupabase();
   const { t } = useLanguage();
   const router = useRouter();
 
@@ -49,29 +52,58 @@ export function ImportantSitesPage() {
   // Determine if the current category is a custom one by checking its ID against the default list
   const isCustomCategory = useMemo(() => !defaultSiteCategories.some(c => c.id === categoryId), [categoryId]);
 
-  // --- Firestore Data Hooks (only run for custom categories) ---
-  const categoryDocRef = useMemo(() => {
-    if (!isCustomCategory || !user || !categoryId) return null;
-    return doc(firestore, 'users', user.uid, 'siteCategories', categoryId) as DocumentReference<any>;
-  }, [firestore, user, categoryId, isCustomCategory]);
-  const { data: firestoreCategory, isLoading: isLoadingFirestoreCategory } = useDoc<any>(categoryDocRef);
+  // --- Supabase Data Fetching (only for custom categories) ---
+  const [category, setCategory] = useState<any>(null);
+  const [sites, setSites] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const sitesQuery = useMemo(() => {
-    if (!isCustomCategory || !user || !categoryId) return null;
-    return query(collection(firestore, 'users', user.uid, 'siteCategories', categoryId, 'sites'), orderBy('title', 'asc'));
-  }, [firestore, user, categoryId, isCustomCategory]);
-  const { data: firestoreSites, isLoading: isLoadingFirestoreSites } = useCollection<any>(sitesQuery);
-  
-  // --- Default Data (retrieved synchronously) ---
-  const defaultCategoryData = useMemo(() => {
-    if (isCustomCategory) return null;
-    return defaultSiteCategories.find(c => c.id === categoryId);
-  }, [categoryId, isCustomCategory]);
+  useEffect(() => {
+    if (!user || !categoryId) return;
+    if (!isCustomCategory) {
+      // For default categories, use local data
+      const defaultData = defaultSiteCategories.find(c => c.id === categoryId);
+      setCategory(defaultData || null);
+      setSites(defaultData?.sites || []);
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        // Fetch category
+        const { data: catData, error: catError } = await supabase
+          .from('site_categories')
+          .select('*')
+          .eq('id', categoryId)
+          .eq('user_id', user.id)
+          .single();
+
+        if (catError) throw catError;
+        setCategory(catData);
+
+        // Fetch sites for this category
+        const { data: sitesData, error: sitesError } = await supabase
+          .from('sites')
+          .select('*')
+          .eq('category_id', categoryId)
+          .eq('user_id', user.id)
+          .order('title', { ascending: true });
+
+        if (sitesError) throw sitesError;
+        setSites(sitesData || []);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user, categoryId, isCustomCategory]);
 
   // --- Loading State ---
-  const isLoading = isCustomCategory && (isLoadingFirestoreCategory || isLoadingFirestoreSites);
-
-  if (isLoading) {
+  if (isLoading || isUserLoading) {
     return (
       <Card>
         <CardHeader>
@@ -88,10 +120,10 @@ export function ImportantSitesPage() {
   }
 
   // --- Determine final data to render ---
-  const category = isCustomCategory ? firestoreCategory : defaultCategoryData;
-  const sites = isCustomCategory ? firestoreSites : defaultCategoryData?.sites;
-  
-  if (!category) {
+  const currentCategory = isCustomCategory ? category : defaultSiteCategories.find(c => c.id === categoryId);
+  const currentSites = isCustomCategory ? sites : currentCategory?.sites;
+
+  if (!currentCategory) {
     return (
       <Alert variant="destructive">
         <AlertTriangle className="h-4 w-4" />
@@ -102,10 +134,10 @@ export function ImportantSitesPage() {
       </Alert>
     );
   }
-  
-  const IconComponent = iconComponents[category.icon] || iconComponents.Default;
-  const title = isCustomCategory ? category.title : t[category.titleKey as TranslationKeys];
-  const description = isCustomCategory ? category.description : t[category.descriptionKey as TranslationKeys];
+
+  const IconComponent = iconComponents[currentCategory.icon] || iconComponents.Default;
+  const title = isCustomCategory ? currentCategory.title : t[currentCategory.titleKey as TranslationKeys];
+  const description = isCustomCategory ? currentCategory.description : t[currentCategory.descriptionKey as TranslationKeys];
 
   return (
     <>
@@ -133,47 +165,47 @@ export function ImportantSitesPage() {
         </CardHeader>
         <CardContent>
           <Accordion type="single" collapsible className="w-full space-y-2">
-            {sites && sites.map((site, siteIndex) => {
-                const siteTitle = isCustomCategory ? site.title : t[site.titleKey as TranslationKeys];
-                const siteDescription = isCustomCategory ? site.description : t[site.descriptionKey as TranslationKeys];
-                return (
-                    <AccordionItem value={`site-${siteIndex}`} key={site.id || site.url} className="border-b-0 rounded-md border bg-muted/30">
-                        <AccordionTrigger className="px-4 py-3 text-base font-medium hover:no-underline text-start">
-                            {siteTitle}
-                        </AccordionTrigger>
-                        <AccordionContent className="space-y-4 px-4 pb-4 text-sm">
-                            <p className="text-muted-foreground">{siteDescription}</p>
-                            <Button asChild variant="outline" size="sm">
-                            <a href={site.url.startsWith('http') ? site.url : `https://${site.url}`} target="_blank" rel="noopener noreferrer">
-                                {t.visitSiteButton}
-                                <ExternalLink className="ms-2 h-4 w-4" />
-                            </a>
-                            </Button>
-                        </AccordionContent>
-                    </AccordionItem>
-                )
+            {currentSites && currentSites.map((site: any, siteIndex: number) => {
+              const siteTitle = isCustomCategory ? site.title : t[site.titleKey as TranslationKeys];
+              const siteDescription = isCustomCategory ? site.description : t[site.descriptionKey as TranslationKeys];
+              return (
+                <AccordionItem value={`site-${siteIndex}`} key={site.id || site.url} className="border-b-0 rounded-md border bg-muted/30">
+                  <AccordionTrigger className="px-4 py-3 text-base font-medium hover:no-underline text-start">
+                    {siteTitle}
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-4 px-4 pb-4 text-sm">
+                    <p className="text-muted-foreground">{siteDescription}</p>
+                    <Button asChild variant="outline" size="sm">
+                      <a href={site.url.startsWith('http') ? site.url : `https://${site.url}`} target="_blank" rel="noopener noreferrer">
+                        {t.visitSiteButton}
+                        <ExternalLink className="ms-2 h-4 w-4" />
+                      </a>
+                    </Button>
+                  </AccordionContent>
+                </AccordionItem>
+              );
             })}
-            {(!sites || sites.length === 0) && (
-                 <div className="flex flex-col items-center justify-center rounded-md border-2 border-dashed border-muted-foreground/30 bg-muted/20 p-12 text-center">
-                    <p className="text-muted-foreground">{!isCustomCategory ? "This default category has no sites." : "Add your first site to this category by clicking the '+' icon above."}</p>
-                </div>
+            {(!currentSites || currentSites.length === 0) && (
+              <div className="flex flex-col items-center justify-center rounded-md border-2 border-dashed border-muted-foreground/30 bg-muted/20 p-12 text-center">
+                <p className="text-muted-foreground">{!isCustomCategory ? "This default category has no sites." : "Add your first site to this category by clicking the '+' icon above."}</p>
+              </div>
             )}
           </Accordion>
         </CardContent>
       </Card>
       {isCustomCategory && (
         <>
-            <AddSiteDialog
-                isOpen={isAddSiteOpen}
-                onOpenChange={setIsAddSiteOpen}
-                categoryId={categoryId}
-            />
-            <DeleteCategoryAlert
-                isOpen={isDeleteCategoryOpen}
-                onOpenChange={setIsDeleteCategoryOpen}
-                categoryId={categoryId}
-                onDeleted={() => router.push('/important-sites')}
-            />
+          <AddSiteDialog
+            isOpen={isAddSiteOpen}
+            onOpenChange={setIsAddSiteOpen}
+            categoryId={categoryId}
+          />
+          <DeleteCategoryAlert
+            isOpen={isDeleteCategoryOpen}
+            onOpenChange={setIsDeleteCategoryOpen}
+            categoryId={categoryId}
+            onDeleted={() => router.push('/important-sites')}
+          />
         </>
       )}
     </>

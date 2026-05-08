@@ -1,4 +1,5 @@
 'use client';
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,8 +12,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "./ui/button";
 import { useLanguage } from "@/context/language-provider";
-import { deleteDocumentNonBlocking, useFirestore, useUser } from "@/firebase";
-import { doc } from "firebase/firestore";
+import { useSupabase } from "@/supabase/provider";
+import { supabase } from "@/supabase/client";
 
 interface DeleteCategoryAlertProps {
   isOpen: boolean;
@@ -23,16 +24,22 @@ interface DeleteCategoryAlertProps {
 
 export function DeleteCategoryAlert({ isOpen, onOpenChange, categoryId, onDeleted }: DeleteCategoryAlertProps) {
   const { t } = useLanguage();
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const { user } = useSupabase();
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!user) return;
-    const categoryRef = doc(firestore, 'users', user.uid, 'siteCategories', categoryId);
-    deleteDocumentNonBlocking(categoryRef);
+    try {
+      const { error } = await supabase
+        .from('important_sites')
+        .delete()
+        .eq('id', categoryId)
+        .eq('user_id', user.id);
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error deleting category:', error);
+    }
     onDeleted();
   };
-
   return (
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
       <AlertDialogContent>

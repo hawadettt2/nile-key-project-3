@@ -1,7 +1,8 @@
 'use client';
+
 import { useLanguage } from '@/context/language-provider';
 import { Toaster } from "@/components/ui/toaster";
-import { FirebaseClientProvider } from '@/firebase';
+import { SupabaseProvider } from '@/supabase/provider';
 
 export default function BodyWrapper({ children }: { children: React.ReactNode }) {
     const { language } = useLanguage();
@@ -18,11 +19,11 @@ export default function BodyWrapper({ children }: { children: React.ReactNode })
                 <link href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@400..700&display=swap" rel="stylesheet" />
             </head>
             <body className="font-body antialiased">
-                <FirebaseClientProvider>
+                <SupabaseProvider>
                     {children}
-                </FirebaseClientProvider>
+                </SupabaseProvider>
                 <Toaster />
             </body>
         </html>
-    )
+    );
 }

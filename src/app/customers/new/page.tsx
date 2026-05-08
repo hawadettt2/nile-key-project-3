@@ -1,4 +1,5 @@
 'use client';
+
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { Header } from "@/components/layout/header";
@@ -13,8 +14,8 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { PlusCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useUser, useFirestore, addDocumentNonBlocking } from '@/firebase';
-import { collection, serverTimestamp } from 'firebase/firestore';
+import { useSupabase } from '@/supabase/provider';
+import { supabase } from '@/supabase/client';
 import { Textarea } from '@/components/ui/textarea';
 import { useLanguage } from '@/context/language-provider';
 
@@ -22,8 +23,7 @@ function AddCustomerForm() {
   const { language, t } = useLanguage();
   const router = useRouter();
   const { toast } = useToast();
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const { user } = useSupabase();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const customerSchema = z.object({
@@ -54,10 +54,24 @@ function AddCustomerForm() {
       toast({ variant: 'destructive', title: t.authErrorTitle, description: t.authErrorDescription });
       return;
     }
+    
     setIsSubmitting(true);
     try {
-      const collectionRef = collection(firestore, 'users', user.uid, 'customers');
-      await addDocumentNonBlocking(collectionRef, { ...values, createdAt: serverTimestamp() });
+      const { error } = await supabase
+        .from('customers')
+        .insert({
+          user_id: user.id,
+          customer_code: values.customerCode || null,
+          client_name: values.clientName,
+          country: values.country,
+          credit_limit: values.creditLimit,
+          hs_codes_preferred: values.hsCodesPreferred,
+          inco_terms: values.incoTerms,
+          payment_terms: values.paymentTerms,
+        });
+
+      if (error) throw error;
+
       toast({ title: t.addCustomerSuccessTitle, description: t.addCustomerSuccessDescription });
       form.reset();
       router.push('/customers');
@@ -120,7 +134,7 @@ function AddCustomerForm() {
                   </FormItem>
                 )}
               />
-               <FormField
+              <FormField
                 control={form.control}
                 name="creditLimit"
                 render={({ field }) => (
@@ -133,7 +147,7 @@ function AddCustomerForm() {
                   </FormItem>
                 )}
               />
-               <FormField
+              <FormField
                 control={form.control}
                 name="incoTerms"
                 render={({ field }) => (
@@ -160,20 +174,20 @@ function AddCustomerForm() {
                 )}
               />
             </div>
-             <FormField
-                control={form.control}
-                name="hsCodesPreferred"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t.formHsCodesPreferred}</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder={t.formHsCodesPreferredPlaceholder} {...field} />
-                    </FormControl>
-                     <CardDescription>{t.formCommaSeparated}</CardDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <FormField
+              control={form.control}
+              name="hsCodesPreferred"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t.formHsCodesPreferred}</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder={t.formHsCodesPreferredPlaceholder} {...field} />
+                  </FormControl>
+                  <CardDescription>{t.formCommaSeparated}</CardDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="mx-2 h-4 w-4 animate-spin" />}
               {t.addCustomerButton}
@@ -184,7 +198,6 @@ function AddCustomerForm() {
     </Card>
   );
 }
-
 
 export default function AddCustomerPage() {
   return (

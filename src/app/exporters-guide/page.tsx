@@ -29,7 +29,7 @@ function ExportersGuidePageContent() {
       icon: <Landmark className="h-5 w-5 text-primary" />,
       links: [
         { title: t.siteCapqTitle, url: 'https://www.capq.gov.eg' },
-        { title: t.siteAecGovTitle, url: 'https://www.aecegypt.com' },
+        { title: t.siteAecTitle, url: 'https://www.aecegypt.com' },
       ],
     },
     {
@@ -38,11 +38,11 @@ function ExportersGuidePageContent() {
       icon: <FileText className="h-5 w-5 text-primary" />,
       links: [
         { title: t.siteCapqTitle, url: 'https://www.capq.gov.eg' },
-        { title: t.siteGoeicTitle, url: 'https://www.goeic.gov.eg' },
+        { title: t.siteAecTitle, url: 'https://www.aecegypt.com' },
       ],
     },
     {
-      title: t.guideNafezaTitle,
+      title: t.siteNafezaTitle,
       content: t.guideNafezaContent,
       icon: <CheckCircle className="h-5 w-5 text-primary" />,
       links: [
@@ -55,11 +55,10 @@ function ExportersGuidePageContent() {
       content: t.guideStandardsContent,
       icon: <Star className="h-5 w-5 text-primary" />,
        links: [
-        { title: t.guideLinkGlobalGap, url: 'https://www.globalgap.org' },
-        { title: t.guideLinkIso22000, url: 'https://www.iso.org/iso-22000-food-safety-management.html' },
-        { title: t.guideLinkBrcgs, url: 'https://www.brcgs.com/' },
-      ],
-    },
+         { title: t.guideLinkGlobalGap, url: 'https://www.globalgap.org' },
+         { title: t.guideLinkIso22000, url: 'https://www.iso.org/iso-22000-food-safety-management.html' },
+       ],
+     },
     {
       title: t.guideLogisticsTitle,
       content: t.guideLogisticsContent,

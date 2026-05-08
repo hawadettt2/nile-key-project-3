@@ -1,5 +1,4 @@
-
-"use client";
+'use client';
 
 import Link from "next/link";
 import React, { useState, useMemo } from "react";
@@ -27,19 +26,12 @@ import {
   Globe,
   ChevronRight,
   PlusCircle,
-  Search,
-  Database,
-  Code,
-  Shield,
-  Landmark,
-  Sprout,
-  Book,
-  BadgeCheck,
   Brain,
-  LockKeyhole,
+  Shield,
+  BadgeCheck,
 } from "lucide-react";
-import { useAuth, useCollection, useFirestore, useUser, useDoc, setDocumentNonBlocking } from "@/firebase";
-import { signOut } from "firebase/auth";
+import { useSupabase } from "@/supabase/provider";
+import { supabase } from "@/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -50,44 +42,24 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { collection, query, orderBy, doc, DocumentReference } from "firebase/firestore";
+import { useDoc } from "@/supabase/hooks/use-doc";
+import { useCollection } from "@/supabase/hooks/use-collection";
 import { EditAvatarDialog } from "../edit-avatar-dialog";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import type { TranslationKeys } from "@/lib/i18n";
 import { defaultSiteCategories } from "@/lib/default-sites";
+import type { SiteCategory } from "@/lib/supabase-types";
 
 const userAvatar = PlaceHolderImages.find(img => img.id === 'user-avatar');
-
 
 const supportedLanguages = [
   { code: 'en', name: 'English' },
   { code: 'ar', name: 'العربية' },
 ];
 
-const iconComponents: { [key: string]: React.ReactNode } = {
-  Globe: <Globe className="h-4 w-4" />,
-  Shield: <Shield className="h-4 w-4" />,
-  Search: <Search className="h-4 w-4" />,
-  Database: <Database className="h-4 w-4" />,
-  Code: <Code className="h-4 w-4" />,
-  Briefcase: <Briefcase className="h-4 w-4" />,
-  Building2: <Building2 className="h-4 w-4" />,
-  Landmark: <Landmark className="h-4 w-4" />,
-  Sprout: <Sprout className="h-4 w-4" />,
-  Default: <ChevronRight className="h-4 w-4" />,
-};
-
-type SiteCategory = {
-  id: string;
-  title: string;
-  icon: string;
-}
-
 export function AppSidebar() {
   const { language, setLanguage, t } = useLanguage();
-  const { user, isUserLoading } = useUser();
-  const auth = useAuth();
-  const firestore = useFirestore();
+  const { user, isLoading: isUserLoading, signOut } = useSupabase();
   const { toast } = useToast();
   const pathname = usePathname();
   const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
@@ -97,25 +69,36 @@ export function AppSidebar() {
 
   const userProfileRef = useMemo(() => {
     if (!user) return null;
-    return doc(firestore, 'users', user.uid) as DocumentReference<any>;
-  }, [firestore, user]);
+    return { tableName: 'profiles', id: user.id };
+  }, [user]);
 
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userProfileRef);
+  // Use any to avoid TypeScript errors with profile fields
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(
+    supabase,
+    'profiles',
+    user?.id
+  );
 
-  const customCategoriesQuery = React.useMemo(() => {
+  const customCategoriesQuery = useMemo(() => {
     if (!user) return null;
-    return query(collection(firestore, 'users', user.uid, 'siteCategories'), orderBy('createdAt', 'asc'));
-  }, [firestore, user]);
+    return { tableName: 'site_categories', userId: user.id };
+  }, [user]);
 
-  const { data: customCategories, isLoading: isLoadingCategories } = useCollection<SiteCategory>(customCategoriesQuery);
+  const { data: customCategories, isLoading: isLoadingCategories } = useCollection<SiteCategory>(
+    supabase,
+    'site_categories',
+    user?.id,
+    'created_at',
+    'asc'
+  );
 
-  const hasAdminRole = userProfile?.role && ['owner', 'admin', 'staff'].includes(userProfile.role);
+  // Updated to use new role system
+  const hasAdminRole = userProfile?.role && ['owner', 'admin', 'employee'].includes(userProfile.role);
   const isAdmin = isOwnerByEmail || hasAdminRole;
-
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      await signOut();
       toast({
         title: t.logoutSuccessTitle,
         description: t.logoutSuccessDescription,
@@ -131,44 +114,49 @@ export function AppSidebar() {
   };
 
   const handleAvatarSelect = async (newAvatarUrl: string) => {
-    if (!userProfileRef || !user) {
-        toast({ variant: 'destructive', title: t.avatarUpdatedFail });
-        return;
+    if (!user) {
+      toast({ variant: 'destructive', title: t.avatarUpdatedFail });
+      return;
     }
     try {
-        const dataToSave: { photoURL: string; id?: string; email?: string | null; role?: string } = { photoURL: newAvatarUrl };
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          email: user.email,
+          display_name: userProfile?.display_name || user.email,
+          avatar_url: newAvatarUrl,
+          ...(user.email === 'hawadettt@gmail.com' ? { role: 'owner' } : {}),
+        }, { onConflict: 'id' });
 
-        if (!userProfile) {
-            dataToSave.id = user.uid;
-            if (user.email) {
-                dataToSave.email = user.email;
-                if (user.email === 'hawadettt@gmail.com') {
-                    dataToSave.role = 'owner';
-                }
-            }
-        }
-        
-        setDocumentNonBlocking(userProfileRef, dataToSave, { merge: true });
+      if (error) throw error;
 
-        toast({ title: t.avatarUpdatedSuccess });
-        setIsAvatarDialogOpen(false);
+      toast({ title: t.avatarUpdatedSuccess });
+      setIsAvatarDialogOpen(false);
     } catch (error) {
-        console.error("Avatar update initiation failed:", error);
-        toast({ variant: 'destructive', title: t.avatarUpdatedFail });
+      console.error("Avatar update failed:", error);
+      toast({ variant: 'destructive', title: t.avatarUpdatedFail });
     }
   };
 
-  const getRoleDisplay = () => {
+  const getRoleDisplay = (): string => {
     if (isOwnerByEmail) {
-      return t.roleCompanyOwner;
+      return 'Company Owner';
     }
     if (userProfile?.role) {
-      const roleKey = `role${userProfile.role.charAt(0).toUpperCase() + userProfile.role.slice(1)}` as TranslationKeys;
-      return t[roleKey] || userProfile.role;
+      // Simple mapping for role display
+      const roleMap: Record<string, string> = {
+        'owner': 'Owner',
+        'admin': 'Admin',
+        'employee': 'Employee',
+        'importer': 'Importer',
+        'supplier': 'Supplier',
+        'agent': 'Agent',
+      };
+      return roleMap[userProfile.role] || userProfile.role;
     }
-    return t.sidebarUser;
+    return 'User';
   };
-
 
   return (
     <>
@@ -204,8 +192,8 @@ export function AppSidebar() {
             <div className="flex items-center gap-3 rounded-md p-2">
                 <button onClick={() => setIsAvatarDialogOpen(true)} className="rounded-full ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                   <Avatar className="h-10 w-10 border-2 border-sidebar-accent">
-                    <AvatarImage src={userProfile?.photoURL || user?.photoURL || userAvatar?.imageUrl} />
-                    <AvatarFallback>{userProfile?.userName?.[0].toUpperCase() ?? user?.email?.[0].toUpperCase() ?? 'U'}</AvatarFallback>
+                    <AvatarImage src={userProfile?.avatar_url || user?.user_metadata?.avatar_url || userAvatar?.imageUrl} />
+                    <AvatarFallback>{userProfile?.display_name?.[0]?.toUpperCase() ?? user?.email?.[0]?.toUpperCase() ?? 'U'}</AvatarFallback>
                   </Avatar>
                 </button>
                 <Link href="/settings" className="flex-grow overflow-hidden">
@@ -284,74 +272,29 @@ export function AppSidebar() {
                       <SidebarMenuButton
                           isActive={pathname.startsWith('/shipments')}
                           size="sm"
-                          className="w-full justify-between group"
                       >
-                        <div className="flex items-center gap-2">
-                            <LockKeyhole className="h-4 w-4 text-primary" />
-                            <span>{t.sidebarShipments}</span>
-                          </div>
-                          <ChevronRight className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                        <Truck />
+                        <span>{t.sidebarShipments}</span>
+                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                       </SidebarMenuButton>
                     </CollapsibleTrigger>
-                    <CollapsibleContent className="pt-1">
-                      <SidebarMenu className="pl-7">
-                          <SidebarMenuItem>
-                            <Link href="/shipments">
-                              <SidebarMenuButton isActive={pathname === '/shipments'} size="sm">
-                                <span>{t.sidebarViewAll}</span>
-                              </SidebarMenuButton>
-                            </Link>
-                          </SidebarMenuItem>
-                          <SidebarMenuItem>
-                            <Link href="/shipments/new">
-                              <SidebarMenuButton isActive={pathname === '/shipments/new'} size="sm">
-                                <span>{t.sidebarAddNew}</span>
-                              </SidebarMenuButton>
-                            </Link>
-                          </SidebarMenuItem>
-                      </SidebarMenu>
-                    </CollapsibleContent>
-                  </Collapsible>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <Collapsible defaultOpen={pathname.startsWith('/suppliers')}>
-                    <CollapsibleTrigger asChild>
-                      <SidebarMenuButton
-                          isActive={pathname.startsWith('/suppliers')}
-                          size="sm"
-                          className="w-full justify-between group"
-                      >
-                        <div className="flex items-center gap-2">
-                            <LockKeyhole className="h-4 w-4 text-primary" />
-                            <span>{t.sidebarSuppliers}</span>
-                          </div>
-                          <ChevronRight className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90" />
-                      </SidebarMenuButton>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="pt-1">
-                      <SidebarMenu className="pl-7">
-                          <SidebarMenuItem>
-                            <Link href="/suppliers">
-                              <SidebarMenuButton isActive={pathname === '/suppliers'} size="sm">
-                                <span>{t.sidebarPublicDatabase}</span>
-                              </SidebarMenuButton>
-                            </Link>
-                          </SidebarMenuItem>
-                          <SidebarMenuItem>
-                            <Link href="/suppliers/whitelist">
-                              <SidebarMenuButton isActive={pathname === '/suppliers/whitelist'} size="sm">
-                              <BadgeCheck className="h-4 w-4"/>
-                                <span>{t.sidebarNfsaWhitelist}</span>
-                              </SidebarMenuButton>
-                            </Link>
-                          </SidebarMenuItem>
-                          <SidebarMenuItem>
-                            <Link href="/suppliers/new">
-                              <SidebarMenuButton isActive={pathname === '/suppliers/new'} size="sm">
-                                <span>{t.sidebarAddPrivate}</span>
-                              </SidebarMenuButton>
-                            </Link>
-                          </SidebarMenuItem>
+                    <CollapsibleContent>
+                      <SidebarMenu>
+                        <SidebarMenuItem>
+                          <Link href="/shipments">
+                            <SidebarMenuButton isActive={pathname === '/shipments'} size="sm">
+                              <span>{t.sidebarShipmentsDashboard}</span>
+                            </SidebarMenuButton>
+                          </Link>
+                        </SidebarMenuItem>
+                        <SidebarMenuItem>
+                          <Link href="/shipments/new">
+                            <SidebarMenuButton isActive={pathname === '/shipments/new'} size="sm">
+                              <PlusCircle />
+                              <span>{t.sidebarNewShipment}</span>
+                            </SidebarMenuButton>
+                          </Link>
+                        </SidebarMenuItem>
                       </SidebarMenu>
                     </CollapsibleContent>
                   </Collapsible>
@@ -362,134 +305,162 @@ export function AppSidebar() {
                       <SidebarMenuButton
                           isActive={pathname.startsWith('/customers')}
                           size="sm"
-                          className="w-full justify-between group"
                       >
-                        <div className="flex items-center gap-2">
-                            <LockKeyhole className="h-4 w-4 text-primary" />
-                            <span>{t.sidebarCustomers}</span>
-                          </div>
-                          <ChevronRight className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                        <Users />
+                        <span>{t.sidebarCustomers}</span>
+                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                       </SidebarMenuButton>
                     </CollapsibleTrigger>
-                    <CollapsibleContent className="pt-1">
-                      <SidebarMenu className="pl-7">
-                          <SidebarMenuItem>
-                            <Link href="/customers">
-                              <SidebarMenuButton isActive={pathname === '/customers'} size="sm">
-                                <span>{t.sidebarViewAll}</span>
-                              </SidebarMenuButton>
-                            </Link>
-                          </SidebarMenuItem>
-                          <SidebarMenuItem>
-                            <Link href="/customers/new">
-                              <SidebarMenuButton isActive={pathname === '/customers/new'} size="sm">
-                                <span>{t.sidebarAddNew}</span>
-                              </SidebarMenuButton>
-                            </Link>
-                          </SidebarMenuItem>
+                    <CollapsibleContent>
+                      <SidebarMenu>
+                        <SidebarMenuItem>
+                          <Link href="/customers">
+                            <SidebarMenuButton isActive={pathname === '/customers'} size="sm">
+                              <span>{t.sidebarCustomersDashboard}</span>
+                            </SidebarMenuButton>
+                          </Link>
+                        </SidebarMenuItem>
+                        <SidebarMenuItem>
+                          <Link href="/customers/new">
+                            <SidebarMenuButton isActive={pathname === '/customers/new'} size="sm">
+                              <PlusCircle />
+                              <span>{t.sidebarNewCustomer}</span>
+                            </SidebarMenuButton>
+                          </Link>
+                        </SidebarMenuItem>
                       </SidebarMenu>
                     </CollapsibleContent>
                   </Collapsible>
                 </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <Collapsible defaultOpen={pathname.startsWith('/suppliers')}>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton
+                          isActive={pathname.startsWith('/suppliers')}
+                          size="sm"
+                      >
+                        <Building2 />
+                        <span>{t.sidebarSuppliers}</span>
+                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <SidebarMenu>
+                        <SidebarMenuItem>
+                          <Link href="/suppliers">
+                            <SidebarMenuButton isActive={pathname === '/suppliers'} size="sm">
+                              <span>{t.sidebarSuppliersDashboard}</span>
+                            </SidebarMenuButton>
+                          </Link>
+                        </SidebarMenuItem>
+                        <SidebarMenuItem>
+                          <Link href="/suppliers/new">
+                            <SidebarMenuButton isActive={pathname === '/suppliers/new'} size="sm">
+                              <PlusCircle />
+                              <span>{t.sidebarNewSupplier}</span>
+                            </SidebarMenuButton>
+                          </Link>
+                        </SidebarMenuItem>
+                        <SidebarMenuItem>
+                          <Link href="/suppliers/whitelist">
+                            <SidebarMenuButton isActive={pathname === '/suppliers/whitelist'} size="sm">
+                              <BadgeCheck />
+                              <span>{t.sidebarNfsaWhitelist}</span>
+                            </SidebarMenuButton>
+                          </Link>
+                        </SidebarMenuItem>
+                      </SidebarMenu>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <Collapsible defaultOpen={pathname.startsWith('/important-sites')}>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton
+                          isActive={pathname.startsWith('/important-sites')}
+                          size="sm"
+                      >
+                        <Globe />
+                        <span>{t.sidebarImportantSites}</span>
+                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <SidebarMenu>
+                        <SidebarMenuItem>
+                          <Link href="/important-sites">
+                            <SidebarMenuButton isActive={pathname === '/important-sites'} size="sm">
+                              <span>{t.sidebarSitesDashboard}</span>
+                            </SidebarMenuButton>
+                          </Link>
+                        </SidebarMenuItem>
+                        <SidebarMenuItem>
+                          <Link href="/important-sites/new">
+                            <SidebarMenuButton isActive={pathname === '/important-sites/new'} size="sm">
+                              <PlusCircle />
+                              <span>{t.sidebarNewSite}</span>
+                            </SidebarMenuButton>
+                          </Link>
+                        </SidebarMenuItem>
+                        {customCategories?.map((category) => (
+                          <SidebarMenuItem key={category.id}>
+                            <Link href={`/important-sites/${category.id}`}>
+                              <SidebarMenuButton isActive={pathname === `/important-sites/${category.id}`} size="sm">
+                                <span>{category.title}</span>
+                              </SidebarMenuButton>
+                            </Link>
+                          </SidebarMenuItem>
+                        ))}
+                      </SidebarMenu>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </SidebarMenuItem>
+                {/* Admin Dashboard Link - Only for owners and admins */}
+                <SidebarMenuItem>
+                  <Link href="/dashboard/admin">
+                    <SidebarMenuButton isActive={pathname === '/dashboard/admin'} size="sm">
+                      <Shield />
+                      <span>{t.sidebarAdminDashboard}</span>
+                    </SidebarMenuButton>
+                  </Link>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <Link href="/settings">
+                    <SidebarMenuButton isActive={pathname === '/settings'} size="sm">
+                      <Settings />
+                      <span>{t.sidebarSettings}</span>
+                    </SidebarMenuButton>
+                  </Link>
+                </SidebarMenuItem>
             </SidebarMenu>
         )}
 
-        <SidebarMenu className="mt-4">
-            <div className="px-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider">{t.sidebarSectionResources}</div>
-            <SidebarMenuItem>
-              <Collapsible defaultOpen={pathname.startsWith('/important-sites')}>
-                <CollapsibleTrigger asChild>
-                   <SidebarMenuButton
-                      isActive={pathname.startsWith('/important-sites')}
-                      size="sm"
-                      className="w-full justify-between group"
-                   >
-                     <div className="flex items-center gap-2">
-                        <Globe />
-                        <span>{t.sidebarImportantSites}</span>
-                      </div>
-                      <ChevronRight className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-90" />
-                   </SidebarMenuButton>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pt-1">
-                  <SidebarMenu className="pl-7">
-                      {isLoadingCategories ? (
-                        <div className="space-y-1">
-                          <Skeleton className="h-7 w-full" />
-                          <Skeleton className="h-7 w-full" />
-                        </div>
-                      ) : (
-                        <>
-                          {customCategories && customCategories.map(category => (
-                            <SidebarMenuItem key={category.id}>
-                              <Link href={`/important-sites/${category.id}`}>
-                                <SidebarMenuButton isActive={pathname === `/important-sites/${category.id}`} size="sm">
-                                  {iconComponents[category.icon] || iconComponents.Default}
-                                  <span>{category.title}</span>
-                                </SidebarMenuButton>
-                              </Link>
-                            </SidebarMenuItem>
-                          ))}
-
-                          {customCategories && customCategories.length > 0 && defaultSiteCategories.length > 0 && (
-                            <SidebarSeparator className="my-2" />
-                          )}
-
-                          {defaultSiteCategories.map(category => (
-                            <SidebarMenuItem key={category.id}>
-                              <Link href={`/important-sites/${category.id}`}>
-                                <SidebarMenuButton isActive={pathname === `/important-sites/${category.id}`} size="sm">
-                                    {iconComponents[category.icon] || iconComponents.Default}
-                                    <span>{t[category.titleKey as TranslationKeys]}</span>
-                                </SidebarMenuButton>
-                              </Link>
-                            </SidebarMenuItem>
-                          ))}
-                        </>
-                      )}
-                      <SidebarMenuItem>
-                        <Link href="/important-sites/new">
-                          <SidebarMenuButton isActive={pathname === '/important-sites/new'} size="sm">
-                            <PlusCircle className="h-4 w-4" />
-                            <span>{t.sidebarAddNewCategory}</span>
-                          </SidebarMenuButton>
-                        </Link>
-                      </SidebarMenuItem>
-                  </SidebarMenu>
-                </CollapsibleContent>
-              </Collapsible>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <Link href="/exporters-guide">
-                <SidebarMenuButton isActive={pathname === '/exporters-guide'} size="sm">
-                  <Book />
-                  <span>{t.sidebarExportersGuide}</span>
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-             <SidebarMenuItem>
-              <Link href="/settings">
-                <SidebarMenuButton isActive={pathname === '/settings'} size="sm">
-                  <Settings />
-                  <span>{t.sidebarSettings}</span>
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-        </SidebarMenu>
-
+        {!isAdmin && user && (
+            <SidebarMenu className="mt-4">
+                <div className="px-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider">{t.sidebarSectionManagement}</div>
+                <SidebarMenuItem>
+                  <Link href="/settings">
+                    <SidebarMenuButton isActive={pathname === '/settings'} size="sm">
+                      <Settings />
+                      <span>{t.sidebarSettings}</span>
+                    </SidebarMenuButton>
+                  </Link>
+                </SidebarMenuItem>
+            </SidebarMenu>
+        )}
       </SidebarContent>
-      <SidebarSeparator />
-      <SidebarFooter className="p-2 flex justify-center">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-foreground">
-            <span className="font-headline text-lg font-bold text-background">N</span>
+      <SidebarFooter className="p-2">
+        <div className="px-2 text-xs text-muted-foreground">
+          Nile Key v3 © {new Date().getFullYear()}
         </div>
       </SidebarFooter>
     </Sidebar>
+
     <EditAvatarDialog
         isOpen={isAvatarDialogOpen}
         onOpenChange={setIsAvatarDialogOpen}
         onAvatarSelect={handleAvatarSelect}
-      />
+    />
     </>
   );
 }

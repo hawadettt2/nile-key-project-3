@@ -1,4 +1,5 @@
 'use client';
+
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -18,8 +19,8 @@ import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/context/language-provider';
-import { addDocumentNonBlocking, useFirestore, useUser } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { useSupabase } from '@/supabase/provider';
+import { supabase } from '@/supabase/client';
 import { Textarea } from './ui/textarea';
 
 interface AddSiteDialogProps {
@@ -32,8 +33,7 @@ export function AddSiteDialog({ isOpen, onOpenChange, categoryId }: AddSiteDialo
   const { t } = useLanguage();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const { user } = useSupabase();
 
   const siteSchema = z.object({
     title: z.string().min(1, 'Title is required'),
@@ -57,8 +57,18 @@ export function AddSiteDialog({ isOpen, onOpenChange, categoryId }: AddSiteDialo
     }
     setIsSubmitting(true);
     try {
-      const sitesCollectionRef = collection(firestore, 'users', user.uid, 'siteCategories', categoryId, 'sites');
-      await addDocumentNonBlocking(sitesCollectionRef, values);
+      const { error } = await supabase
+        .from('sites')
+        .insert({
+          user_id: user.id,
+          category_id: categoryId,
+          title: values.title,
+          url: values.url,
+          description: values.description || null,
+        });
+
+      if (error) throw error;
+
       toast({ title: t.addSiteSuccess });
       form.reset();
       onOpenChange(false);

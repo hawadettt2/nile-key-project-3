@@ -7,15 +7,28 @@ import { Brain, Loader2, CalendarClock, TrendingUp, Sparkles, MapPin, Search, In
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { predictHarvestTime, PredictHarvestTimeOutput } from '@/ai/flows/predict-harvest-time';
-import { findMarketOpportunities, FindMarketOpportunitiesOutput } from '@/ai/flows/find-market-opportunities';
-import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Separator } from './ui/separator';
 
+// Dummy types for compatibility
+type PredictHarvestTimeOutput = {
+  optimalWindow: string;
+  keyFactors: string[];
+  strategicAdvice: string;
+};
+
+type FindMarketOpportunitiesOutput = {
+  opportunities: Array<{
+    region: string;
+    window: string;
+    opportunity: string;
+    reasoning: string;
+    confidenceScore: number;
+  }>;
+};
+
 function HarvestAdvisor() {
     const { t, language } = useLanguage();
-    const { toast } = useToast();
     const [crop, setCrop] = useState('');
     const [location, setLocation] = useState('Egypt');
     const [isLoading, setIsLoading] = useState(false);
@@ -26,15 +39,15 @@ function HarvestAdvisor() {
         setIsLoading(true);
         setResult(null);
         try {
-            const prediction = await predictHarvestTime({ 
-                crop, 
-                location,
-                language: language === 'ar' ? 'Arabic' : 'English'
+            // TODO: Replace with Hugging Face API call
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            setResult({
+                optimalWindow: language === 'ar' ? 'أغسطس - سبتمبر' : 'August - September',
+                keyFactors: [language === 'ar' ? 'درجة الحرارة' : 'Temperature', language === 'ar' ? 'كمية الأمطار' : 'Rainfall'],
+                strategicAdvice: language === 'ar' ? 'يرجى الحصاد في الصباح الباكر.' : 'Harvest in early morning.'
             });
-            setResult(prediction);
         } catch (error) {
             console.error(error);
-            toast({ variant: 'destructive', title: t.aiSearchFailTitle, description: t.aiSearchFailDescription });
         } finally {
             setIsLoading(false);
         }
@@ -47,11 +60,11 @@ function HarvestAdvisor() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <Label htmlFor="crop-harvest">{t.harvestAdvisorCropLabel}</Label>
-                    <Input id="crop-harvest" value={crop} onChange={e => setCrop(e.target.value)} placeholder="e.g. Navel Oranges"/>
+                    <Input id="crop-harvest" value={crop} onChange={(e) => setCrop(e.target.value)} placeholder="e.g., Navel Oranges" />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="location-harvest">{t.harvestAdvisorLocationLabel}</Label>
-                    <Input id="location-harvest" value={location} onChange={e => setLocation(e.target.value)} placeholder="e.g. Minya, Egypt"/>
+                    <Input id="location-harvest" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g., Minya, Egypt" />
                 </div>
             </div>
             <Button onClick={handlePredict} disabled={isLoading}>
@@ -74,22 +87,21 @@ function HarvestAdvisor() {
                     <div className="space-y-2">
                         <h4 className="font-semibold">{t.harvestFactorsTitle}</h4>
                         <ul className="list-disc pl-5 text-muted-foreground space-y-1 text-sm">
-                            {result.keyFactors.map((factor, i) => <li key={i}>{factor}</li>)}
+                            {result.keyFactors.map((factor: string, i: number) => <li key={i}>{factor}</li>)}
                         </ul>
                     </div>
                      <div className="space-y-2">
-                        <h4 className="font-semibold">{t.harvestAdviceTitle}</h4>
-                        <p className="text-muted-foreground text-sm">{result.strategicAdvice}</p>
-                    </div>
-                </div>
+                         <h4 className="font-semibold">{t.harvestAdviceTitle}</h4>
+                         <p className="text-muted-foreground text-sm">{result.strategicAdvice}</p>
+                     </div>
+                 </div>
             )}
         </div>
-    )
+    );
 }
 
 function MarketOpportunityFinder() {
     const { t, language } = useLanguage();
-    const { toast } = useToast();
     const [crop, setCrop] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [result, setResult] = useState<FindMarketOpportunitiesOutput | null>(null);
@@ -99,15 +111,21 @@ function MarketOpportunityFinder() {
         setIsLoading(true);
         setResult(null);
         try {
-            const opportunities = await findMarketOpportunities({ 
-                crop, 
-                exportingCountry: "Egypt",
-                language: language === 'ar' ? 'Arabic' : 'English'
+            // TODO: Replace with Hugging Face API call
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            setResult({
+                opportunities: [
+                    {
+                        region: language === 'ar' ? 'دول مجلس التعاون الخليجي' : 'GCC Countries',
+                        window: language === 'ar' ? '2026-2027' : '2026-2027',
+                        opportunity: language === 'ar' ? 'زيادة الطلب على الحمضرات العضية' : 'Increased demand for organic citrus',
+                        reasoning: language === 'ar' ? 'توجه نحو المنتجات العضوية' : 'Shift towards organic products',
+                        confidenceScore: 0.85
+                    }
+                ]
             });
-            setResult(opportunities);
         } catch (error) {
             console.error(error);
-            toast({ variant: 'destructive', title: t.aiSearchFailTitle, description: t.aiSearchFailDescription });
         } finally {
             setIsLoading(false);
         }
@@ -120,7 +138,7 @@ function MarketOpportunityFinder() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <Label htmlFor="crop-market">{t.marketOpportunityCropLabel}</Label>
-                    <Input id="crop-market" value={crop} onChange={e => setCrop(e.target.value)} placeholder="e.g. Egyptian Garlic"/>
+                    <Input id="crop-market" value={crop} onChange={(e) => setCrop(e.target.value)} placeholder="e.g., Egyptian Garlic" />
                 </div>
             </div>
             <Button onClick={handleSearch} disabled={isLoading}>
@@ -135,8 +153,8 @@ function MarketOpportunityFinder() {
             )}
             {result && (
                 <div className="space-y-4 pt-4">
-                   <h4 className="font-semibold">{t.marketOpportunityResultsTitle}</h4>
-                    {result.opportunities.map((opp, i) => (
+                    <h4 className="font-semibold">{t.marketOpportunityResultsTitle}</h4>
+                    {result.opportunities.map((opp: FindMarketOpportunitiesOutput['opportunities'][0], i: number) => (
                         <div key={i} className="p-4 border rounded-md bg-muted/30">
                             <div className="font-bold flex items-center gap-2"><MapPin className="h-4 w-4" /> {opp.region} ({opp.window})</div>
                             <p className="font-semibold text-primary">{opp.opportunity}</p>
@@ -147,7 +165,7 @@ function MarketOpportunityFinder() {
                 </div>
             )}
         </div>
-    )
+    );
 }
 
 export function PredictiveAnalyticsDashboard() {
@@ -163,16 +181,16 @@ export function PredictiveAnalyticsDashboard() {
           <CardDescription>{t.predictiveAnalyticsDescription}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-            <Alert className="bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800">
-                <Info className="h-4 w-4 !text-blue-500" />
-                <AlertTitle className="text-blue-800 dark:text-blue-300">{t.aiDataSourceTitle}</AlertTitle>
-                <AlertDescription className="text-blue-700 dark:text-blue-400">
-                    {t.aiDataSourceDescription}
-                </AlertDescription>
-            </Alert>
-            <HarvestAdvisor />
-            <Separator />
-            <MarketOpportunityFinder />
+          <Alert className="bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800">
+            <Info className="h-4 w-4 !text-blue-500" />
+            <AlertTitle className="text-blue-800 dark:text-blue-300">{t.aiDataSourceTitle}</AlertTitle>
+            <AlertDescription className="text-blue-700 dark:text-blue-400">
+              {t.aiDataSourceDescription}
+            </AlertDescription>
+          </Alert>
+          <HarvestAdvisor />
+          <Separator />
+          <MarketOpportunityFinder />
         </CardContent>
       </Card>
     </div>

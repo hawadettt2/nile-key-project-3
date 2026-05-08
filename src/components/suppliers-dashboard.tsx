@@ -1,21 +1,20 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, Building2, Bot, Search, AlertTriangle } from 'lucide-react';
+import { Loader2, Building2, Search, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useUser, useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
-import { searchSuppliers, type SearchSuppliersInput, type SearchSuppliersOutput } from '@/ai/flows/search-suppliers';
+import { useSupabase } from '@/supabase/provider';
+import { supabase } from '@/supabase/client';
 import { useLanguage } from '@/context/language-provider';
 
 export function SuppliersDashboard() {
   const { language, t } = useLanguage();
 
-  type Station = { 
+  type Supplier = {
     id: string;
     name: string;
     address: string;
@@ -25,28 +24,45 @@ export function SuppliersDashboard() {
   };
 
   const { toast } = useToast();
-  const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
+  const { user, isLoading: isUserLoading } = useSupabase();
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<SearchSuppliersOutput | null>(null);
+  const [searchResults, setSearchResults] = useState<any | null>(null);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [isLoadingSuppliers, setIsLoadingSuppliers] = useState(true);
 
-  const suppliersQuery = useMemo(() => {
-    if (!firestore) return null;
-    const appId = 'nile-key-master';
-    return query(collection(firestore, 'artifacts', appId, 'public', 'data', 'stations'), orderBy('name', 'asc'));
-  }, [firestore]);
-
-  const { data: suppliers, isLoading: isLoadingSuppliers } = useCollection<Station>(suppliersQuery);
+  useEffect(() => {
+    const fetchSuppliers = async () => {
+      setIsLoadingSuppliers(true);
+      try {
+        const { data, error } = await supabase
+          .from('suppliers')
+          .select('*')
+          .order('name', { ascending: true });
+        if (error) throw error;
+        setSuppliers(data || []);
+      } catch (error) {
+        console.error('Error fetching suppliers:', error);
+        toast({ variant: 'destructive', title: t.aiSearchFailTitle, description: t.aiSearchFailDescription });
+      } finally {
+        setIsLoadingSuppliers(false);
+      }
+    };
+    fetchSuppliers();
+  }, [toast]);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
     setIsSearching(true);
     setSearchResults(null);
     try {
-      const input: SearchSuppliersInput = { query: searchQuery };
-      const result = await searchSuppliers(input);
-      setSearchResults(result);
+      // TODO: Implement AI search with Hugging Face
+      // For now, just filter local results
+      const filtered = suppliers.filter(s =>
+        s.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.activity?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setSearchResults({ suppliers: filtered });
     } catch (error) {
       console.error('Failed to search suppliers:', error);
       toast({ variant: 'destructive', title: t.aiSearchFailTitle, description: t.aiSearchFailDescription });
@@ -124,13 +140,13 @@ export function SuppliersDashboard() {
       <Card>
         <CardHeader>
           <CardTitle className="font-headline flex items-center gap-2">
-            <Bot className="h-6 w-6" /> {t.aiSupplierSearchTitle}
+            <Search className="h-6 w-6" /> {t.aiSupplierSearchTitle}
           </CardTitle>
           <CardDescription>{t.aiSupplierSearchDescription}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
             <div className="flex gap-2">
-              <Input 
+              <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={t.aiSearchSupplierPlaceholder}
@@ -149,15 +165,14 @@ export function SuppliersDashboard() {
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   <p className="mx-4 text-muted-foreground">{t.geminiAnalyzing}</p>
                 </div>
-              ) : searchResults && searchResults.suppliers.length > 0 ? (
+              ) : searchResults && searchResults.suppliers && searchResults.suppliers.length > 0 ? (
                 <div className="space-y-4">
-                  {searchResults.suppliers.map((supplier, index) => (
+                  {searchResults.suppliers.map((supplier: any, index: number) => (
                     <div key={index} className="rounded-md border p-4">
-                      <h5 className="font-bold">{supplier.farmName}</h5>
-                      <p className="text-sm text-muted-foreground">{t.tableHeaderCropType}: {supplier.cropVarieties}</p>
-                      <p className="text-sm text-muted-foreground">{t.tableHeaderLocation}: {supplier.location}</p>
-                      <p className="text-sm text-muted-foreground">{t.tableHeaderContact}: {supplier.contactNumber}</p>
-                      <a href={supplier.source} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">{t.aiSource}</a>
+                      <h5 className="font-bold">{supplier.name}</h5>
+                      <p className="text-sm text-muted-foreground">{t.tableHeaderActivity}: {supplier.activity}</p>
+                      <p className="text-sm text-muted-foreground">{t.tableHeaderAddress}: {supplier.address}</p>
+                      <p className="text-sm text-muted-foreground">{t.tableHeaderContact}: {supplier.phone}</p>
                     </div>
                   ))}
                 </div>

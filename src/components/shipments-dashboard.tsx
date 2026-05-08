@@ -1,14 +1,14 @@
 
 'use client';
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Package, AlertTriangle, Truck } from "lucide-react";
-import { useUser, useFirestore, useCollection } from "@/firebase";
-import { collection, query, orderBy } from "firebase/firestore";
+import { useSupabase } from "@/supabase/provider";
+import { supabase } from "@/supabase/client";
 import { format } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { useLanguage } from "@/context/language-provider";
@@ -16,26 +16,45 @@ import { useLanguage } from "@/context/language-provider";
 export function ShipmentsDashboard() {
   const { language, t } = useLanguage();
   
-  type Shipment = { 
-    id: string; 
-    createdAt: { seconds: number, nanoseconds: number };
-    shipmentType: string;
+  type Shipment = {
+    id: string;
+    created_at: string;
+    shipment_type: string;
     customer: string;
     status: string;
-    acidNumber: string;
-    trackingNumber: string;
+    acid_number: string;
+    tracking_number: string;
     price: number;
   };
 
-  const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
+  const { user, isLoading: isUserLoading } = useSupabase();
+  const [shipments, setShipments] = useState<Shipment[]>([]);
+  const [isLoadingShipments, setIsLoadingShipments] = useState(true);
 
-  const shipmentsQuery = useMemo(() => {
-    if (!user) return null;
-    return query(collection(firestore, 'users', user.uid, 'shipments'), orderBy('createdAt', 'desc'));
-  }, [firestore, user]);
-
-  const { data: shipments, isLoading: isLoadingShipments } = useCollection<Shipment>(shipmentsQuery);
+  useEffect(() => {
+    const fetchShipments = async () => {
+      if (!user) {
+        setShipments([]);
+        setIsLoadingShipments(false);
+        return;
+      }
+      setIsLoadingShipments(true);
+      try {
+        const { data, error } = await supabase
+          .from('shipments')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        setShipments(data || []);
+      } catch (error) {
+        console.error('Error fetching shipments:', error);
+      } finally {
+        setIsLoadingShipments(false);
+      }
+    };
+    fetchShipments();
+  }, [user]);
 
   if (isUserLoading) {
       return <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
@@ -82,12 +101,12 @@ export function ShipmentsDashboard() {
                   <TableBody>
                     {shipments.map((shipment) => (
                       <TableRow key={shipment.id}>
-                        <TableCell className="font-medium">{shipment.shipmentType}</TableCell>
+                        <TableCell className="font-medium">{shipment.shipment_type}</TableCell>
                         <TableCell>{shipment.customer}</TableCell>
-                        <TableCell>{shipment.createdAt ? format(new Date(shipment.createdAt.seconds * 1000), "PPP", { locale: language === 'ar' ? ar : enUS }) : 'N/A'}</TableCell>
+                        <TableCell>{shipment.created_at ? format(new Date(shipment.created_at), "PPP", { locale: language === 'ar' ? ar : enUS }) : 'N/A'}</TableCell>
                         <TableCell><Badge variant={shipment.status === t.shipmentStatusOption5 ? 'default' : 'secondary'}>{shipment.status}</Badge></TableCell>
-                        <TableCell>{shipment.acidNumber}</TableCell>
-                        <TableCell>{shipment.trackingNumber}</TableCell>
+                        <TableCell>{shipment.acid_number}</TableCell>
+                        <TableCell>{shipment.tracking_number}</TableCell>
                         <TableCell className="text-left">${shipment.price.toLocaleString()}</TableCell>
                       </TableRow>
                     ))}

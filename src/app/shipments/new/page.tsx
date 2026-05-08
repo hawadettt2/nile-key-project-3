@@ -1,4 +1,5 @@
 'use client';
+
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { Header } from "@/components/layout/header";
@@ -14,8 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { PlusCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useFirestore, addDocumentNonBlocking } from "@/firebase";
-import { collection, serverTimestamp } from "firebase/firestore";
+import { useSupabase } from "@/supabase/provider";
+import { supabase } from "@/supabase/client";
 import { useLanguage } from "@/context/language-provider";
 import { Switch } from "@/components/ui/switch";
 
@@ -23,8 +24,7 @@ function AddShipmentForm() {
   const { language, t } = useLanguage();
   const router = useRouter();
   const { toast } = useToast();
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const { user } = useSupabase();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const shipmentStatusEnum = z.enum([t.shipmentStatusOption1, t.shipmentStatusOption2, t.shipmentStatusOption4, t.shipmentStatusOption5]);
@@ -70,8 +70,26 @@ function AddShipmentForm() {
     }
     setIsSubmitting(true);
     try {
-      const collectionRef = collection(firestore, 'users', user.uid, 'shipments');
-      await addDocumentNonBlocking(collectionRef, { ...values, createdAt: serverTimestamp() });
+      const { error } = await supabase
+        .from('shipments')
+        .insert({
+          user_id: user.id,
+          shipment_type: values.shipmentType,
+          weight: values.weight,
+          container_number: values.containerNumber,
+          tracking_number: values.trackingNumber,
+          acid_number: values.acidNumber || null,
+          carrier_details: values.carrierDetails || null,
+          is_temperature_controlled: values.isTemperatureControlled,
+          transport_type: values.transportType,
+          quantity: values.quantity,
+          price: values.price,
+          customer: values.customer,
+          status: values.status,
+        });
+
+      if (error) throw error;
+
       toast({ title: t.addShipmentSuccessTitle, description: t.addShipmentSuccessDescription });
       form.reset();
       router.push('/shipments');
@@ -120,7 +138,7 @@ function AddShipmentForm() {
               <FormField control={form.control} name="price" render={({ field }) => (
                 <FormItem><FormLabel>{t.formPrice}</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
               )} />
-                <FormField control={form.control} name="transportType" render={({ field }) => (
+              <FormField control={form.control} name="transportType" render={({ field }) => (
                 <FormItem><FormLabel>{t.formTransportType}</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl><SelectTrigger><SelectValue placeholder={t.formTransportTypePlaceholder} /></SelectTrigger></FormControl>
@@ -132,7 +150,7 @@ function AddShipmentForm() {
                   </Select><FormMessage />
                 </FormItem>
               )} />
-                <FormField control={form.control} name="status" render={({ field }) => (
+              <FormField control={form.control} name="status" render={({ field }) => (
                 <FormItem><FormLabel>{t.formStatus}</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl><SelectTrigger><SelectValue placeholder={t.formStatusPlaceholder} /></SelectTrigger></FormControl>
@@ -147,15 +165,15 @@ function AddShipmentForm() {
               )} />
               <FormField control={form.control} name="isTemperatureControlled" render={({ field }) => (
                   <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm mt-8">
-                  <div className="space-y-0.5">
-                      <FormLabel>{t.formIsTemperatureControlled}</FormLabel>
-                  </div>
-                  <FormControl>
-                      <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      />
-                  </FormControl>
+                    <div className="space-y-0.5">
+                        <FormLabel>{t.formIsTemperatureControlled}</FormLabel>
+                    </div>
+                    <FormControl>
+                        <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        />
+                    </FormControl>
                   </FormItem>
               )} />
             </div>
@@ -169,7 +187,6 @@ function AddShipmentForm() {
     </Card>
   );
 }
-
 
 export default function AddShipmentPage() {
   return (

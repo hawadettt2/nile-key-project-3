@@ -5,18 +5,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useLanguage } from "@/context/language-provider";
-import { Languages, Settings, User, Mail, Phone, Globe, AlertTriangle, Edit, MapPin, Loader2, Briefcase, Tag, Shield } from "lucide-react";
+import { Languages, Settings, User, Mail, Phone, Globe, AlertTriangle, Edit, MapPin, Loader2, Briefcase, Shield } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-import { useUser, useFirestore, useDoc, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { doc, setDoc, DocumentReference } from 'firebase/firestore';
+import { useSupabase } from "@/supabase/provider";
+import { supabase } from "@/supabase/client";
 import { Skeleton } from "./ui/skeleton";
 import { Button } from "./ui/button";
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { EditProfileFieldDialog } from "./edit-profile-field-dialog";
 import { countries } from "@/lib/countries";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { useToast } from "@/hooks/use-toast";
-import type { TranslationKeys } from "@/lib/i18n";
 
 
 type UserProfile = {
@@ -35,31 +34,50 @@ type UserProfile = {
 export function SettingsPage() {
   const { setTheme, theme } = useTheme();
   const { language, setLanguage, t } = useLanguage();
-  const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
+  const { user, isLoading: isUserLoading } = useSupabase();
   const { toast } = useToast();
 
   const [editingField, setEditingField] = useState<'userName' | 'companyName' | 'whatsapp' | 'mobile' | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
 
-  const userProfileRef = useMemo(() => {
-    if (!user) return null;
-    return doc(firestore, 'users', user.uid) as DocumentReference<UserProfile>;
-  }, [firestore, user]);
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user) {
+        setUserProfile(null);
+        setIsProfileLoading(false);
+        return;
+      }
+      setIsProfileLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        if (error && error.code !== 'PGRST116') throw error;
+        setUserProfile(data || null);
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+      } finally {
+        setIsProfileLoading(false);
+      }
+    };
+    fetchProfile();
+  }, [user]);
 
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
-  
   const handleUpdateProfile = async (data: Partial<UserProfile>) => {
-    if (!userProfileRef || !user) {
+    if (!user) {
       toast({ variant: 'destructive', title: t.profileUpdateFailed, description: "User not authenticated." });
       return Promise.reject(new Error("User not authenticated."));
     }
     setIsUpdating(true);
 
-    const dataToSave = { ...data };
+    const dataToSave: any = { ...data };
 
     if (!userProfile) {
-      dataToSave.id = user.uid;
+      dataToSave.id = user.id;
       if (user.email) {
         dataToSave.email = user.email;
         if(user.email === 'hawadettt@gmail.com') {
@@ -69,18 +87,14 @@ export function SettingsPage() {
     }
 
     try {
-      await setDoc(userProfileRef, dataToSave, { merge: true });
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({ ...dataToSave, id: user.id }, { onConflict: 'id' });
+      if (error) throw error;
+      setUserProfile(prev => ({ ...prev, ...dataToSave, id: user.id }));
       toast({ title: t.profileUpdatedSuccess });
     } catch (error: any) {
       console.error("Profile update failed:", error);
-      
-      const permissionError = new FirestorePermissionError({
-        path: userProfileRef.path,
-        operation: 'write', 
-        requestResourceData: dataToSave,
-      });
-      errorEmitter.emit('permission-error', permissionError);
-
       toast({
         variant: "destructive",
         title: t.profileUpdateFailed,
@@ -97,17 +111,28 @@ export function SettingsPage() {
     return country ? country.flag : '🏳️';
   }
 
+  // Updated user roles to match new RBAC system
   const userRoles = [
-    { value: 'customer', label: t.roleCustomer },
+    { value: 'owner', label: t.roleOwner },
+    { value: 'admin', label: t.roleAdmin },
+    { value: 'employee', label: t.roleEmployee },
+    { value: 'importer', label: t.roleImporter },
     { value: 'supplier', label: t.roleSupplier },
-    { value: 'forwarder', label: t.roleForwarder },
-    { value: 'staff', label: t.roleStaff },
+    { value: 'agent', label: t.roleAgent },
   ];
-  
-  const getRoleDisplay = () => {
+
+  const getRoleDisplay = (): string => {
     if (userProfile?.role) {
-       const roleKey = `role${userProfile.role.charAt(0).toUpperCase() + userProfile.role.slice(1)}` as TranslationKeys;
-       return t[roleKey] || userProfile.role;
+       // Safe mapping for role display
+       const roleMap: Record<string, string> = {
+         'owner': t.roleOwner,
+         'admin': t.roleAdmin,
+         'employee': t.roleEmployee,
+         'importer': t.roleImporter,
+         'supplier': t.roleSupplier,
+         'agent': t.roleAgent,
+       };
+       return roleMap[userProfile.role] || userProfile.role;
     }
     return t.userDataNotSet;
   }

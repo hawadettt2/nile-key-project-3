@@ -1,4 +1,5 @@
 'use client';
+
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { Header } from "@/components/layout/header";
@@ -15,8 +16,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PlusCircle, Loader2, Globe, Shield, Search, Database, Code, Briefcase, Building2, Landmark } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useUser, useFirestore, addDocumentNonBlocking } from '@/firebase';
-import { collection, serverTimestamp } from 'firebase/firestore';
+import { useSupabase } from '@/supabase/provider';
+import { supabase } from '@/supabase/client';
 import { useLanguage } from "@/context/language-provider";
 
 const iconComponents = {
@@ -34,13 +35,11 @@ type IconName = keyof typeof iconComponents;
 
 const ICONS: { name: IconName; component: React.ReactNode }[] = Object.entries(iconComponents).map(([name, component]) => ({ name: name as IconName, component }));
 
-
 function AddCategoryForm() {
   const { t } = useLanguage();
   const router = useRouter();
   const { toast } = useToast();
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const { user } = useSupabase();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const categorySchema = z.object({
@@ -65,17 +64,25 @@ function AddCategoryForm() {
     }
     setIsSubmitting(true);
     try {
-      const collectionRef = collection(firestore, 'users', user.uid, 'siteCategories');
-      const docRef = await addDocumentNonBlocking(collectionRef, {
-        ...values,
-        createdAt: serverTimestamp(),
-      });
+      const { data, error } = await supabase
+        .from('site_categories')
+        .insert({
+          user_id: user.id,
+          title: values.title,
+          description: values.description || null,
+          icon: values.icon,
+        })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+
       toast({ title: t.addCategorySuccessTitle, description: t.addCategorySuccessDesc });
       form.reset();
-      if(docRef) {
-        router.push(`/important-sites/${docRef.id}`);
+      if (data) {
+        router.push(`/important-sites/${data.id}`);
       } else {
-        // Fallback redirection if docRef is somehow not available
+        // Fallback redirection if data is somehow not available
         router.push('/important-sites');
       }
     } catch (error) {
@@ -160,7 +167,6 @@ function AddCategoryForm() {
     </Card>
   );
 }
-
 
 export default function AddCategoryPage() {
   return (
