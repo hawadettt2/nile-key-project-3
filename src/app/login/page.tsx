@@ -18,6 +18,7 @@ import {
   FormField,
   FormItem,
   FormLabel,
+  FormDescription,
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -28,7 +29,6 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/context/language-provider';
 import { useSupabase } from '@/supabase/provider';
-import { createServerSupabaseClient } from '@/supabase/server';
 
 // Common country codes
 const countryCodes = [
@@ -64,8 +64,29 @@ export default function LoginPage() {
   const [isSigningIn, setIsSigningIn] = useState(true);
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
+  const [authEmail, setAuthEmail] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
+  const [selectedCountryCode, setSelectedCountryCode] = useState('+20');
   
+  const normalizePhoneNumber = (value: string) => {
+    const cleaned = value.replace(/\D/g, '');
+    if (value.trim().startsWith('+')) {
+      return `+${cleaned}`;
+    }
+
+    let local = cleaned;
+    if (selectedCountryCode === '+20') {
+      if (local.startsWith('0')) {
+        local = local.substring(1);
+      }
+      if (local.startsWith('20') && local.length > 10) {
+        local = local.substring(2);
+      }
+    }
+
+    return `${selectedCountryCode}${local}`;
+  };
+
   // Schema for email/password step
   const emailPasswordSchema = z.object({
     email: z.string().email({
@@ -78,8 +99,14 @@ export default function LoginPage() {
 
   // Schema for WhatsApp verification
   const whatsappSchema = z.object({
-    whatsapp: z.string().regex(/^\+[1-9]\d{1,14}$/, {
-      message: 'Invalid phone format. Use E.164 format (e.g., +201234567890)',
+    whatsapp: z.string().transform((val) => val.trim()).superRefine((val, ctx) => {
+      const normalized = normalizePhoneNumber(val);
+      if (!/^\+[1-9]\d{6,14}$/.test(normalized)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `تنسيق رقم الهاتف غير صالح. تأكد من اختيار رمز البلد الصحيح ثم أدخل الرقم المحلي بدون صفر بداية، مثلاً 1026135075 مع +20.`, 
+        });
+      }
     }),
   });
 
@@ -113,10 +140,10 @@ export default function LoginPage() {
   });
 
   useEffect(() => {
-    if (!isUserLoading && user) {
+    if (!isUserLoading && user && currentStep === 'email_password') {
       router.push('/');
     }
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading, router, currentStep]);
 
   // Step 1: Handle Email/Password submission (Sign In or Sign Up)
   const onEmailPasswordSubmit = async (values: z.infer<typeof emailPasswordSchema>) => {
@@ -144,22 +171,41 @@ export default function LoginPage() {
           });
         }
       } else {
-        // Sign Up - Step 1: Create account
-        const { data, error } = await supabase.auth.signUp({
+        // Sign Up - Step 1: Create account using server-side admin registration
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: values.email,
+            password: values.password,
+          }),
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to create account');
+        }
+
+        setAuthEmail(values.email);
+        setCurrentStep('whatsapp_verify');
+
+        const { error: signInError } = await supabase.auth.signInWithPassword({
           email: values.email,
           password: values.password,
         });
-        
-        if (error) throw error;
-        
-        if (data.user) {
-          setUserId(data.user.id);
-          setCurrentStep('whatsapp_verify');
-          toast({
-            title: t.loginProcessingTitle,
-            description: 'Account created! Now verify your WhatsApp number.',
-          });
+
+        if (signInError) {
+          throw signInError;
         }
+
+        if (result.user?.id) {
+          setUserId(result.user.id);
+        }
+
+        toast({
+          title: t.loginProcessingTitle,
+          description: 'Account created! Now verify your WhatsApp number.',
+        });
       }
     } catch (error: any) {
       toast({
@@ -178,13 +224,16 @@ export default function LoginPage() {
     setWhatsappNumber(values.whatsapp);
     
     try {
-      // Call our API to send OTP via WhatsApp
+      const normalizedPhone = normalizePhoneNumber(values.whatsapp);
+      setWhatsappNumber(normalizedPhone);
+
       const response = await fetch('/api/auth/whatsapp-verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          phoneNumber: values.whatsapp,
+          phoneNumber: normalizedPhone,
           userId: userId,
+          email: authEmail || emailPasswordForm.getValues('email'),
         }),
       });
 
@@ -228,6 +277,7 @@ export default function LoginPage() {
           phoneNumber: whatsappNumber,
           code: values.code,
           userId: userId,
+          email: authEmail || emailPasswordForm.getValues('email'),
         }),
       });
 
@@ -350,14 +400,23 @@ export default function LoginPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>WhatsApp Number</FormLabel>
+                      <FormDescription>
+                        اختر رمز البلد ثم أدخل رقمك المحلي بدون صفر في البداية. مثال لمصر: 1026135075.
+                      </FormDescription>
                       <FormControl>
                         <div className="flex items-center gap-2">
                           <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
                           <Select
-                            value={field.value.split(' ')[0] || '+20'}
-                            onValueChange={(code) => {
-                              const number = field.value.split(' ')[1] || '';
-                              field.onChange(`${code} ${number}`.trim());
+                            value={selectedCountryCode}
+                            onValueChange={(countryCode) => {
+                              const currentDigits = (field.value || '').replace(/\D/g, '');
+                              const currentPrefix = selectedCountryCode.replace('+', '');
+                              const cleanedLocal = currentDigits.startsWith(currentPrefix)
+                                ? currentDigits.substring(currentPrefix.length)
+                                : currentDigits;
+
+                              setSelectedCountryCode(countryCode);
+                              field.onChange(`${countryCode}${cleanedLocal}`.trim());
                             }}
                           >
                             <SelectTrigger className="w-[140px] shrink-0">
@@ -372,11 +431,17 @@ export default function LoginPage() {
                             </SelectContent>
                           </Select>
                           <Input
-                            placeholder="1234567890"
-                            value={field.value.split(' ')[1] || ''}
+                            placeholder="1026135075"
+                            value={(field.value || '')
+                              .replace(/\D/g, '')
+                              .replace(new RegExp(`^${selectedCountryCode.replace('+', '')}`), '')
+                            }
                             onChange={(e) => {
-                              const code = field.value.split(' ')[0] || '+20';
-                              field.onChange(`${code} ${e.target.value}`.trim());
+                              let inputValue = e.target.value.replace(/\D/g, '');
+                              if (selectedCountryCode === '+20' && inputValue.startsWith('0')) {
+                                inputValue = inputValue.substring(1);
+                              }
+                              field.onChange(`${selectedCountryCode}${inputValue}`.trim());
                             }}
                             disabled={isLoading}
                             className="flex-1"

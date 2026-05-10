@@ -1,0 +1,63 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+function createAdminClient() {
+  if (!supabaseUrl || !serviceRoleKey) {
+    return null;
+  }
+
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      persistSession: false,
+    },
+  });
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const { email, password } = await request.json();
+
+    if (!email || !password) {
+      return NextResponse.json(
+        { error: 'Email and password are required' },
+        { status: 400 }
+      );
+    }
+
+    const adminSupabase = createAdminClient();
+    if (!adminSupabase) {
+      return NextResponse.json(
+        { error: 'Server configuration missing SUPABASE_SERVICE_ROLE_KEY' },
+        { status: 500 }
+      );
+    }
+
+    const { data, error } = await adminSupabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        role: 'importer',
+      },
+    });
+
+    if (error) {
+      console.error('Admin createUser error:', error);
+      return NextResponse.json(
+        { error: error.message || JSON.stringify(error) },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({ success: true, user: data.user });
+  } catch (error: any) {
+    console.error('Registration route error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
