@@ -44,7 +44,7 @@ jobs:
 
       - name: Execute AI Task
         env:
-          HUGGINGFACE_API_KEY: ${{ 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 }}
+          HUGGINGFACE_API_KEY: ${{ secrets.HF_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AIDER_MODEL: ${{ github.event.inputs.model_choice == 'llama3-70b' && 'huggingface/meta-llama/Meta-Llama-3-70B-Instruct' || 'huggingface/deepseek-ai/deepseek-coder-33b-instruct' }}
         run: |
