@@ -1,0 +1,62 @@
+name: Nile-Key Autonomous AI Builder
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'AI Task Description'
+        required: true
+      model_choice:
+        description: 'Choose Model'
+        required: true
+        default: 'llama3-70b'
+        type: choice
+        options:
+          - llama3-70b
+          - deepseek-coder
+      run_lint:
+        description: 'Run build check?'
+        required: true
+        default: true
+        type: boolean
+
+jobs:
+  build-and-code:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          pip install aider-chat litellm
+          npm install
+
+      - name: Execute AI Task
+        env:
+          HUGGINGFACE_API_KEY: ${{ secrets.HF_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AIDER_MODEL: ${{ github.event.inputs.model_choice == 'llama3-70b' && 'huggingface/meta-llama/Meta-Llama-3-70B-Instruct' || 'huggingface/deepseek-ai/deepseek-coder-33b-instruct' }}
+        run: |
+          aider --message "${{ github.event.inputs.task }}" --auto-commit --yes --no-git-status-check
+
+      - name: Quality Check
+        if: github.event.inputs.run_lint == 'true'
+        run: |
+          npm run build || (echo "Broken code detected! Reverting..." && git checkout .)
+
+      - name: Push to Repository
+        run: |
+          git config --global user.name "Nile-Key-AI-Bot"
+          git config --global user.email "bot@nile-key.com"
+          git push
