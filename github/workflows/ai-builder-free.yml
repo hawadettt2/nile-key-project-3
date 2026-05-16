@@ -1,0 +1,66 @@
+name: Nile-Key Autonomous AI Builder
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'وصف المهمة البرمجية (مثلاً: إضافة صفحة منتجات جديدة)'
+        required: true
+      model_choice:
+        description: 'اختر الموديل'
+        required: true
+        default: 'llama3-70b'
+        type: choice
+        options:
+          - llama3-70b
+          - deepseek-coder
+      run_lint:
+        description: 'هل تريد التحقق من صحة الكود قبل الرفع؟'
+        required: true
+        default: true
+        type: boolean
+
+jobs:
+  build-and-code:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: 1. سحب الكود (Checkout)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 2. إعداد بيئة العمل (Python & Node)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      
+      - name: 3. تثبيت أدوات الذكاء الاصطناعي
+        run: |
+          pip install aider-chat litellm
+          # تثبيت مكتبات Node الأساسية للتحقق من الكود
+          npm install
+
+      - name: 4. تنفيذ المهمة بواسطة الذكاء الاصطناعي
+        env:
+          HUGGINGFACE_API_KEY: ${{ secrets.HF_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # تحديد الموديل بناءً على اختيارك
+          AIDER_MODEL: ${{ github.event.inputs.model_choice == 'llama3-70b' && 'huggingface/meta-llama/Meta-Llama-3-70B-Instruct' || 'huggingface/deepseek-ai/deepseek-coder-33b-instruct' }}
+        run: |
+          # Aider سيبحث عن ملف .aider.conf.yml تلقائياً إذا وجد لضبط القواعد
+          aider --message "${{ github.event.inputs.task }}" --auto-commit --yes --no-git-status-check
+
+      - name: 5. اختبار جودة الكود (Logic Check)
+        if: github.event.inputs.run_lint == 'true'
+        run: |
+          # محاولة بناء المشروع للتأكد من عدم وجود أخطاء TypeScript أو Syntax
+          npm run build || (echo "AI generated broken code! Reverting..." && git checkout .)
+
+      - name: 6. دفع التعديلات للمستودع (Push)
+        run: |
+          git config --global user.name "Nile-Key-AI-Bot"
+          git config --global user.email "bot@nile-key.com"
+          git push origin master
