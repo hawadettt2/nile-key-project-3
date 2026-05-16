@@ -30,7 +30,8 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # ضروري جداً لتمكين عمليات الدمج ومعرفة تاريخ الـ Commits
+          ref: master # الحل الحاسم: إجبار جيت على السير في فرع master الحقيقي وليس نقطة وهمية
+          fetch-depth: 0 # جلب التاريخ الكامل للـ Commits لضمان نجاح الـ rebase
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -44,7 +45,7 @@ jobs:
 
       - name: Execute AI Task
         env:
-          # استبدال هجينج فيس بـ Gemini المستقر والمجاني للمشاريع الكبيرة
+          # الاعتماد على Gemini المستقر والمجاني والسريع للمشاريع الكبيرة بدلاً من Hugging Face
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} 
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AIDER_MODEL: ${{ github.event.inputs.model_choice == 'gemini-2.5-flash' && 'gemini/gemini-2.5-flash' || 'gemini/gemini-2.5-pro' }}
@@ -54,7 +55,7 @@ jobs:
       - name: Quality Check
         if: ${{ github.event.inputs.run_lint == 'true' || github.event.inputs.run_lint == true }}
         env:
-          # تخطي فحص بيئة السيرفر أثناء بناء Next.js لضمان عدم انهيار الـ Build
+          # حقن المتغيرات البيئية الوهمية لعبور بناء Next.js بنجاح
           SUPABASE_URL: "https://placeholder-url.supabase.co"
           SUPABASE_SERVICE_ROLE_KEY: "placeholder-key"
         run: |
@@ -65,11 +66,8 @@ jobs:
           git config --global user.name "Nile-Key-AI-Bot"
           git config --global user.email "bot@nile-key.com"
           
-          # جلب أي تحديثات جديدة تمت على السيرفر أثناء تشغيل الـ Runner
-          git fetch origin master
+          # جلب أي تغييرات جديدة قمت بها أنت على السيرفر ودمج كود البوت فوقها بسلاسة
+          git pull origin master --rebase
           
-          # دمج التحديثات مع الكود الذي كتبه البوت الآن داخل الـ Detached HEAD
-          git rebase origin/master
-          
-          # الحل الحاسم: دفع الـ HEAD الحالي الذي يحتوي على التعديلات مباشرة إلى فرع master
-          git push origin HEAD:master
+          # الرفع الآمن والمباشر
+          git push origin master
