@@ -48,7 +48,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AIDER_MODEL: ${{ github.event.inputs.model_choice == 'llama3-70b' && 'huggingface/meta-llama/Meta-Llama-3-70B-Instruct' || 'huggingface/deepseek-ai/deepseek-coder-33b-instruct' }}
         run: |
-          aider --message "${{ github.event.inputs.task }}" --auto-commit --yes --no-git-status-check
+          aider --message "${{ github.event.inputs.task }}" --auto-commit --yes
 
       - name: Quality Check
         if: github.event.inputs.run_lint == 'true'
