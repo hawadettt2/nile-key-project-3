@@ -9,11 +9,11 @@ on:
       model_choice:
         description: 'Choose Model'
         required: true
-        default: 'llama3-70b'
+        default: 'gemini-2.5-flash'
         type: choice
         options:
-          - llama3-70b
-          - deepseek-coder
+          - gemini-2.5-flash
+          - gemini-2.5-pro
       run_lint:
         description: 'Run build check?'
         required: true
@@ -30,7 +30,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # ضروري جداً لتمكين عملية الـ rebase ومعرفة تاريخ الـ Commits
+          fetch-depth: 0 # ضروري جداً لتمكين عمليات الدمج ومعرفة تاريخ الـ Commits
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -44,16 +44,17 @@ jobs:
 
       - name: Execute AI Task
         env:
-          HUGGINGFACE_API_KEY: ${{ secrets.HF_TOKEN }}
+          # استبدال هجينج فيس بـ Gemini المستقر والمجاني للمشاريع الكبيرة
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} 
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          AIDER_MODEL: ${{ github.event.inputs.model_choice == 'llama3-70b' && 'huggingface/meta-llama/Meta-Llama-3-70B-Instruct' || 'huggingface/deepseek-ai/deepseek-coder-33b-instruct' }}
+          AIDER_MODEL: ${{ github.event.inputs.model_choice == 'gemini-2.5-flash' && 'gemini/gemini-2.5-flash' || 'gemini/gemini-2.5-pro' }}
         run: |
           aider --message "${{ github.event.inputs.task }}" --auto-commit --yes
 
       - name: Quality Check
         if: ${{ github.event.inputs.run_lint == 'true' || github.event.inputs.run_lint == true }}
         env:
-          # حقن قيم وهمية لتخطي فحص البيئة أثناء بناء Next.js دون انهيار السيرفر
+          # تخطي فحص بيئة السيرفر أثناء بناء Next.js لضمان عدم انهيار الـ Build
           SUPABASE_URL: "https://placeholder-url.supabase.co"
           SUPABASE_SERVICE_ROLE_KEY: "placeholder-key"
         run: |
@@ -64,7 +65,11 @@ jobs:
           git config --global user.name "Nile-Key-AI-Bot"
           git config --global user.email "bot@nile-key.com"
           
-          # جلب التغييرات الأخيرة ودمج كود البوت فوقها بسلاسة لمنع خطأ non-fast-forward
-          git pull origin master --rebase
+          # جلب أي تحديثات جديدة تمت على السيرفر أثناء تشغيل الـ Runner
+          git fetch origin master
           
-          git push origin master
+          # دمج التحديثات مع الكود الذي كتبه البوت الآن داخل الـ Detached HEAD
+          git rebase origin/master
+          
+          # الحل الحاسم: دفع الـ HEAD الحالي الذي يحتوي على التعديلات مباشرة إلى فرع master
+          git push origin HEAD:master
