@@ -30,7 +30,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # ضروري جداً لتمكين عملية الـ rebase ومعرفة تاريخ الـ Commits
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -51,7 +51,11 @@ jobs:
           aider --message "${{ github.event.inputs.task }}" --auto-commit --yes
 
       - name: Quality Check
-        if: github.event.inputs.run_lint == 'true'
+        if: ${{ github.event.inputs.run_lint == 'true' || github.event.inputs.run_lint == true }}
+        env:
+          # حقن قيم وهمية لتخطي فحص البيئة أثناء بناء Next.js دون انهيار السيرفر
+          SUPABASE_URL: "https://placeholder-url.supabase.co"
+          SUPABASE_SERVICE_ROLE_KEY: "placeholder-key"
         run: |
           npm run build || (echo "Broken code detected! Reverting..." && git checkout .)
 
@@ -59,4 +63,8 @@ jobs:
         run: |
           git config --global user.name "Nile-Key-AI-Bot"
           git config --global user.email "bot@nile-key.com"
-          git push
+          
+          # جلب التغييرات الأخيرة ودمج كود البوت فوقها بسلاسة لمنع خطأ non-fast-forward
+          git pull origin master --rebase
+          
+          git push origin master
