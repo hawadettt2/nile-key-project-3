@@ -2,6 +2,25 @@ name: AI Autonomous Builder & DB Initializer
 
 on:
   workflow_dispatch:
+    inputs:
+      task_description:
+        description: 'AI Task Description'
+        required: true
+        type: string
+        default: 'Create init-db API route to connect to Supabase and initialize trade_knowledge_hub table with 19 seed rows.'
+      model:
+        description: 'Choose Model'
+        required: true
+        type: choice
+        options:
+          - 'gemini-2.5-flash'
+          - 'gemini-1.5-pro'
+        default: 'gemini-2.5-flash'
+      build_check:
+        description: 'Run build check?'
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   run-builder:
@@ -18,9 +37,15 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install System Dependencies & Chat Tools
+      - name: Setup Python Environment (Fix for Aider)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install System Dependencies & Aider via Pip
         run: |
-          npm install -g aider-chat
+          python -m pip install --upgrade pip
+          pip install aider-chat
           if [ -f package.json ]; then npm install; fi
 
       - name: Execute Automated Interactive Deployment
@@ -32,24 +57,18 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          # 1. كتابة التوجيهات البرمجية داخل ملف نصي معزول تماماً لحماية الرموز والأكواد من الانهيار
+          # حماية نص المهمة المدخل من قبلك داخل حاوية نصية معزولة
           cat << 'EOF' > ai_instructions.txt
-          CRITICAL INTEGRATED TASK — ZERO ROOM FOR ERROR:
-          
-          1. STRUCTURE INSPECTION: Scan the repository immediately to identify the exact Next.js setup (App Router or Pages Router, with or without 'src/' directory).
-          
-          2. API ROUTE CREATION: Create a fully functioning database initialization API endpoint named 'init-db' in the precise directory discovered.
-          
-          3. DATABASE LOGIC: Inside this endpoint, implement the code to connect directly to Supabase using the live environment variables. The code must execute SQL queries to:
-             - Check and create the 'trade_knowledge_hub' table if it does not exist.
-             - Inject the 19 massive strategic trade knowledge/source rows completely and safely.
-             
-          4. VALIDATION: Ensure the project compiles successfully with no TypeScript or build errors.
-          
-          5. COMMIT & PUSH: Automatically commit all created files and push them directly to the master branch.
+          ${{ github.event.inputs.task_description }}
+
+          CRITICAL TECHNICAL EXECUTION:
+          1. Inspect project structure to locate the Next.js API handling directory.
+          2. Establish a secure connection to Supabase and deploy the SQL migration to ensure the 'trade_knowledge_hub' table exists.
+          3. Populate the table with the 19 required strategic trade data rows.
+          4. Verify there are no compilation errors, then commit and push to master.
           EOF
 
-          # 2. تشغيل المطور الآلي بقراءة الملف النصي وتنفيذ المهمة بأعلى صلاحيات للسيرفر
+          # تشغيل البوت المطور لقراءة التعليمات وتنفيذها فوراً
           aider --message-file ai_instructions.txt --auto-commit --yes
 
       - name: Execution Success Report
