@@ -7,7 +7,7 @@ on:
 
 jobs:
   autonomous-agent:
-    runs-on: [ self-hosted, ${{ secrets.RUNNER_LABEL }} ]
+    runs-on: [ ubuntu-latest ]
     environment: production
     steps:
       - name: Checkout repository
