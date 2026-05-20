@@ -23,13 +23,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Prepare env
-        run: |
-          echo "MODEL_PROVIDER=${{ secrets.MODEL_PROVIDER }}" >> $GITHUB_ENV || true
-          echo "MODEL_NAME=${{ secrets.MODEL_NAME }}" >> $GITHUB_ENV || true
-          echo "MODEL_API_KEY=${{ secrets.MODEL_API_KEY }}" >> $GITHUB_ENV || true
-          echo "RUNNER_LABEL=${{ secrets.RUNNER_LABEL }}" >> $GITHUB_ENV || true
-          echo "AGENT_HUMAN_APPROVAL=${{ secrets.AGENT_HUMAN_APPROVAL }}" >> $GITHUB_ENV || true
+      - - name: Prepare env
+  run: |
+    echo "MODEL_PROVIDER=${{ secrets.MODEL_PROVIDER }}" >> $GITHUB_ENV
+    echo "MODEL_NAME=${{ secrets.MODEL_NAME }}" >> $GITHUB_ENV
+    echo "MODEL_API_KEY=${{ secrets.MODEL_API_KEY }}" >> $GITHUB_ENV
+    echo "MODEL_API_URL=${{ secrets.MODEL_API_URL }}" >> $GITHUB_ENV
+    echo "AGENT_HUMAN_APPROVAL=${{ secrets.AGENT_HUMAN_APPROVAL }}" >> $GITHUB_ENV
+    echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
 
       - name: Lint and Build Precheck
         id: precheck
