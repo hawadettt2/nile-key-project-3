@@ -9,6 +9,14 @@ jobs:
   autonomous-agent:
     runs-on: ubuntu-latest
     environment: production
+    env:
+      MODEL_PROVIDER: ${{ secrets.MODEL_PROVIDER }}
+      MODEL_NAME: ${{ secrets.MODEL_NAME }}
+      MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+      MODEL_API_URL: ${{ secrets.MODEL_API_URL }}
+      AGENT_HUMAN_APPROVAL: ${{ secrets.AGENT_HUMAN_APPROVAL }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -23,21 +31,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Prepare env
-        run: |
-          # اكتب المتغيرات الآمنة إلى ملف البيئة ليتم استخدامها في الخطوات التالية
-          echo "MODEL_PROVIDER=${{ secrets.MODEL_PROVIDER }}" >> $GITHUB_ENV
-          echo "MODEL_NAME=${{ secrets.MODEL_NAME }}" >> $GITHUB_ENV
-          echo "MODEL_API_KEY=${{ secrets.MODEL_API_KEY }}" >> $GITHUB_ENV
-          echo "MODEL_API_URL=${{ secrets.MODEL_API_URL }}" >> $GITHUB_ENV
-          echo "AGENT_HUMAN_APPROVAL=${{ secrets.AGENT_HUMAN_APPROVAL }}" >> $GITHUB_ENV
-          echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
-
       - name: Lint and Build Precheck
         id: precheck
         run: |
           set -e
-          # Python lint (إن كان مثبتاً)
+          # Python lint (إن وُجد)
           if command -v flake8 >/dev/null 2>&1; then
             flake8 || true
           fi
@@ -52,13 +50,6 @@ jobs:
 
       - name: Run Autonomous Agent
         id: run_agent
-        env:
-          MODEL_PROVIDER: ${{ env.MODEL_PROVIDER }}
-          MODEL_NAME: ${{ env.MODEL_NAME }}
-          MODEL_API_KEY: ${{ env.MODEL_API_KEY }}
-          MODEL_API_URL: ${{ env.MODEL_API_URL }}
-          GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
-          AGENT_HUMAN_APPROVAL: ${{ env.AGENT_HUMAN_APPROVAL }}
         run: |
           python agent.py --mode=autonomous
 
