@@ -1,9 +1,0 @@
-# إعدادات أداة المطور الذكي لـ Nile-Key3
-architect: true
-map-tokens: 1024
-chat-language: ar
-
-# السر هنا: إجبار الأداة على قراءة ملف الذاكرة وجدول البيانات في كل مَهمة
-read:
-  - INSTRUCTIONS.md
-  - schema.sql
