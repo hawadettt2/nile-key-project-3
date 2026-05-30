@@ -2,11 +2,7 @@ import { HfInference } from '@huggingface/inference';
 
 const apiKey = process.env.HUGGINGFACE_API_KEY;
 
-if (!apiKey) {
-  throw new Error('Missing HUGGINGFACE_API_KEY environment variable');
-}
-
-export const hf = new HfInference(apiKey);
+export const hf = apiKey ? new HfInference(apiKey) : null;
 
 // Default model for text generation
 export const DEFAULT_MODEL = 'meta-llama/Meta-Llama-3-8B-Instruct';

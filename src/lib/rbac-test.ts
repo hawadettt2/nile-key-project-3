@@ -5,7 +5,7 @@
  * For actual testing, use the Supabase Dashboard or create integration tests.
  */
 
-import { UserRoleSchema, UserStatusSchema, UpdateUserRoleSchema, UpdateUserStatusSchema } from './rbac-validation';
+import { UserRoleSchema, UserStatusSchema, UpdateUserRoleSchema } from './rbac-validation';
 import type { UserRole, UserStatus } from './supabase-types';
 
 /**
@@ -101,10 +101,9 @@ export function testZodValidation() {
  * Manual Testing Checklist:
  * 
  * 1. Registration Flow:
- *    □ User registers with mobile + email + password
- *    □ OTP sent to WhatsApp
- *    □ User verifies OTP
- *    □ Status set to 'pending_verification'
+ *    □ User registers with email + password
+ *    □ Profile row is created or attached with pending_verification status
+ *    □ Admin can review the account from the dashboard
  * 
  * 2. Admin Approval:
  *    □ Admin sees pending users in dashboard

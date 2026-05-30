@@ -347,7 +347,7 @@ CREATE POLICY "Everyone can view audit logs"
 CREATE OR REPLACE FUNCTION public.handle_new_user() 
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, role, status, whatsapp_verified)
+  INSERT INTO public.profiles (id, email, role, status)
   VALUES (
     NEW.id,
     NEW.email,
@@ -355,8 +355,7 @@ BEGIN
       WHEN NEW.email = 'hawadettt@gmail.com' THEN 'owner'::public.user_role
       ELSE 'importer'::public.user_role
     END,
-    'pending_verification',
-    FALSE
+    'pending_verification'
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;

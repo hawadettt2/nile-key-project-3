@@ -406,7 +406,7 @@ export function AppSidebar() {
                           <SidebarMenuItem key={category.id}>
                             <Link href={`/important-sites/${category.id}`}>
                               <SidebarMenuButton isActive={pathname === `/important-sites/${category.id}`} size="sm">
-                                <span>{category.title}</span>
+                                <span>{category.title ?? category.name}</span>
                               </SidebarMenuButton>
                             </Link>
                           </SidebarMenuItem>

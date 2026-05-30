@@ -1,13 +1,19 @@
 import { HfInference } from '@huggingface/inference';
 
-const hf = new HfInference(process.env.HUGGINGFACE_API_KEY!);
-
 export const maxDuration = 60; // Allow streaming responses up to 60 seconds
 
 export async function POST(req: Request) {
+  const apiKey = process.env.HUGGINGFACE_API_KEY;
+  if (!apiKey) {
+    return new Response(
+      JSON.stringify({ error: 'Missing HUGGINGFACE_API_KEY environment variable' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const hf = new HfInference(apiKey);
   const { messages, model = 'meta-llama/Meta-Llama-3-8B-Instruct' } = await req.json();
 
-  // Convert messages to Llama 3 format
   const prompt = messages
     .map((m: { role: string; content: string }) => {
       if (m.role === 'user') return `<|start_header_id|>user<|end_header_id|>\n${m.content}<|eot_id|>`;
@@ -18,7 +24,6 @@ export async function POST(req: Request) {
     .join('') + '<|start_header_id|>assistant<|end_header_id|>\n';
 
   try {
-    // Create a readable stream from Hugging Face
     const hfStream = await hf.textGenerationStream({
       model,
       inputs: prompt,
@@ -31,7 +36,6 @@ export async function POST(req: Request) {
       },
     });
 
-    // Convert HF stream to ReadableStream
     const stream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder();

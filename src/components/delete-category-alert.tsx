@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -9,11 +10,11 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Button } from "./ui/button";
-import { useLanguage } from "@/context/language-provider";
-import { useSupabase } from "@/supabase/provider";
-import { supabase } from "@/supabase/client";
+} from '@/components/ui/alert-dialog';
+import { Button } from './ui/button';
+import { useLanguage } from '@/context/language-provider';
+import { useSupabase } from '@/supabase/provider';
+import { supabase } from '@/supabase/client';
 
 interface DeleteCategoryAlertProps {
   isOpen: boolean;
@@ -30,7 +31,7 @@ export function DeleteCategoryAlert({ isOpen, onOpenChange, categoryId, onDelete
     if (!user) return;
     try {
       const { error } = await supabase
-        .from('important_sites')
+        .from('site_categories')
         .delete()
         .eq('id', categoryId)
         .eq('user_id', user.id);
@@ -40,21 +41,18 @@ export function DeleteCategoryAlert({ isOpen, onOpenChange, categoryId, onDelete
     }
     onDeleted();
   };
+
   return (
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{t.deleteCategoryTitle}</AlertDialogTitle>
-          <AlertDialogDescription>
-            {t.deleteCategoryDesc}
-          </AlertDialogDescription>
+          <AlertDialogDescription>{t.deleteCategoryDesc}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
           <AlertDialogAction asChild>
-            <Button onClick={handleDelete} variant="destructive">
-              {t.deleteButton}
-            </Button>
+            <Button onClick={handleDelete} variant="destructive">{t.deleteButton}</Button>
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

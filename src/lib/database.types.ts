@@ -361,8 +361,5 @@ export interface Database {
     Functions: {
       [_ in never]: never
     }
-    Enums: {
-      [_ in never]: never
-    }
   }
 }

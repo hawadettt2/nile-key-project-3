@@ -34,19 +34,11 @@ export const UpdateUserStatusSchema = z.object({
   newStatus: UserStatusSchema
 });
 
-// Zod schema for WhatsApp verification
-export const WhatsAppVerifySchema = z.object({
-  phoneNumber: z.string().regex(/^\+[1-9]\d{1,14}$/, 'Invalid phone number format (E.164)'),
-  code: z.string().length(6, 'OTP must be 6 digits'),
-  userId: z.string().uuid('Invalid user ID').optional()
-});
-
 // Zod schema for registration
 export const RegistrationSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   displayName: z.string().min(2, 'Display name must be at least 2 characters'),
-  phoneNumber: z.string().regex(/^\+[1-9]\d{1,14}$/, 'Invalid phone number format (E.164)'),
   role: UserRoleSchema.default('importer')
 });
 
@@ -144,5 +136,4 @@ export async function checkUserPermission(
 // Export type inference
 export type UpdateUserRoleInput = z.infer<typeof UpdateUserRoleSchema>;
 export type UpdateUserStatusInput = z.infer<typeof UpdateUserStatusSchema>;
-export type WhatsAppVerifyInput = z.infer<typeof WhatsAppVerifySchema>;
 export type RegistrationInput = z.infer<typeof RegistrationSchema>;

@@ -30,7 +30,7 @@
 *   **Framework:** Next.js 15 (App Router)
 *   **Backend:** Supabase (PostgreSQL, Authentication, Realtime, RLS Policies)
 *   **AI Engine:** Hugging Face Inference API (Llama 3.2, Mistral, etc.)
-*   **Authentication:** Supabase Auth + WhatsApp OTP Verification
+*   **Authentication:** Supabase Auth + email OTP Verification
 *   **UI/UX:** Tailwind CSS + ShadCN UI (Nile Blue Theme)
 *   **Language:** دعم كامل للغة العربية والإنجليزية (RTL/LTR)
 *   **Validation:** Zod for Schema Validation (IDOR Prevention)
@@ -76,7 +76,7 @@
    SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
    
    # Hugging Face API
-   HUGGING_FACE_API_KEY=your_huggingface_api_key
+   HUGGINGFACE_API_KEY=your_huggingface_api_key
    ```
 
 4. **Database Setup:**
@@ -96,7 +96,7 @@
 ### 🔒 Security Features
 - ✅ Row Level Security (RLS) Policies
 - ✅ Zod Schema Validation (IDOR Prevention)
-- ✅ WhatsApp OTP Verification
+- ✅ email OTP Verification
 - ✅ Route Guards (Middleware)
 - ✅ Audit Logs (Read-Only)
 - ✅ Supabase Auth Integration
@@ -115,3 +115,7 @@ npm i -g vercel
 # Deploy
 vercel --prod
 ```
+
+
+## Trade Knowledge Hub
+The Important Sites section now includes a local 190-source trade knowledge base with AI-assisted ranking and optional Hugging Face summarization.

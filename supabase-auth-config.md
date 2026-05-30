@@ -20,10 +20,10 @@ https://your-production-domain.com/login
 https://your-production-domain.com/dashboard
 ```
 
-### 3. إعدادات OTP (للتحقق عبر WhatsApp)
-بما أننا نستخدم WhatsApp للتحقق، تأكد من:
+### 3. إعدادات OTP (للتحقق عبر email)
+بما أننا نستخدم email للتحقق، تأكد من:
 - تعطيل OTP عبر SMS في **Authentication > Settings > Phone Auth**
-- نحن نستخدم نظام OTP مخصص عبر WhatsApp API (انظر `src/app/api/auth/whatsapp-verify/route.ts`)
+- نحن نستخدم نظام OTP مخصص عبر email API (انظر `src/app/api/auth/email-verify/route.ts`)
 
 ### 4. سياسات RLS (تم تطبيقها بالفعل في schema.sql)
 تم تطبيق سياسات RLS التي تمنع المستخدمين غير المفعلين من الوصول:
@@ -37,14 +37,14 @@ CREATE POLICY "Users can update own profile for verification" ON public.profiles
   WITH CHECK (auth.uid() = id AND (
     -- السماح بتحديث حقول التحقق فقط
     (OLD.status = 'pending_verification' AND NEW.status = 'pending_verification') OR
-    (OLD.whatsapp_verified = NEW.whatsapp_verified) OR
+    (OLD.email_verified = NEW.email_verified) OR
     (OLD.verification_code = NEW.verification_code)
   ));
 ```
 
 ## ملاحظات هامة:
 1. **نظام الموافقة**: جميع المستخدمين الجدد يتم إنشاؤهم بحالة `pending_verification` (انظر `schema.sql` السطر 445)
-2. **التحقق**: يتم التحقق عبر WhatsApp OTP قبل تفعيل الحساب
+2. **التحقق**: يتم التحقق عبر email OTP قبل تفعيل الحساب
 3. **المسؤولون**: يمكن للمسؤولين (Owner/Admin) الموافقة على الحسابات يدوياً عبر لوحة التحكم (`/dashboard/admin`)
 
 ## التحقق من الإعدادات:
@@ -58,6 +58,6 @@ curl -X POST 'https://your-project.supabase.co/auth/v1/signup' \
 
 ## ملفات ذات صلة:
 - `schema.sql` - إعدادات قاعدة البيانات ودالة `handle_new_user()`
-- `src/app/api/auth/whatsapp-verify/route.ts` - نظام التحقق عبر WhatsApp
+- `src/app/api/auth/email-verify/route.ts` - نظام التحقق عبر email
 - `src/app/login/page.tsx` - صفحة التسجيل الهجينة
 - `src/app/dashboard/admin/page.tsx` - لوحة تحكم المسؤول للموافقة على المستخدمين

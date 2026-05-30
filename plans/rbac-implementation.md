@@ -7,7 +7,7 @@
 - تحديث جدول profiles ليشمل كافة الحقول الجديدة
 - سجلات تدقيق غير قابلة للتغيير (audit_logs)
 - سياسات RLS متقدمة تعتمد على الأدوار
-- نظام OTP عبر WhatsApp
+- نظام OTP عبر email
 
 ---
 
@@ -35,8 +35,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   
   -- معلومات الاتصال
   phone TEXT UNIQUE,
-  whatsapp_number TEXT,
-  whatsapp_verified BOOLEAN DEFAULT FALSE,
+  email_number TEXT,
+  email_verified BOOLEAN DEFAULT FALSE,
   
   -- نظام RBAC
   role public.user_role DEFAULT 'importer',
@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   
   -- القيود
   CONSTRAINT phone_format_check CHECK (phone ~ '^\+[1-9]\d{1,14}$'),
-  CONSTRAINT whatsapp_format_check CHECK (whatsapp_number ~ '^\+[1-9]\d{1,14}$' OR whatsapp_number IS NULL)
+  CONSTRAINT email_format_check CHECK (email_number ~ '^\+[1-9]\d{1,14}$' OR email_number IS NULL)
 );
 
 -- الفهارس
@@ -225,8 +225,8 @@ profiles: {
     display_name: string | null
     avatar_url: string | null
     phone: string | null
-    whatsapp_number: string | null
-    whatsapp_verified: boolean | null
+    email_number: string | null
+    email_verified: boolean | null
     role: 'owner' | 'admin' | 'employee' | 'importer' | 'supplier' | 'agent'
     permissions: Json
     entity_id: string | null
@@ -342,12 +342,12 @@ CREATE TRIGGER audit_profiles_changes
 
 ---
 
-## المهمة 7: تطوير نظام OTP عبر WhatsApp
+## المهمة 7: تطوير نظام OTP عبر email
 
-إنشاء API route في `src/app/api/auth/whatsapp-verify/route.ts`:
-1. إرسال كود OTP عبر WhatsApp Business API
-2. التحقق من الكود وحفظ رقم WhatsApp في الملف الشخصي
-3. تحديث حالة `whatsapp_verified` إلى true
+إنشاء API route في `src/app/api/auth/email-verify/route.ts`:
+1. إرسال كود OTP عبر email Business API
+2. التحقق من الكود وحفظ رقم email في الملف الشخصي
+3. تحديث حالة `email_verified` إلى true
 
 ---
 
@@ -355,7 +355,7 @@ CREATE TRIGGER audit_profiles_changes
 
 تحديث `src/app/login/page.tsx`:
 1. نموذج هجين (موبايل + إيميل + كلمة سر)
-2. إرسال OTP للموبايل (WhatsApp)
+2. إرسال OTP للموبايل (email)
 3. التحقق من الكود وتفعيل الحساب
 4. إكمال بيانات الملف الشخصي بعد التسجيل
 
@@ -376,7 +376,7 @@ CREATE TRIGGER audit_profiles_changes
 2. ✅ تحديث TypeScript types (المهمة 4)
 3. ✅ إنشاء وظائف التدقيق (المهمة 5)
 4. ⏳ تحديث Middleware (المهمة 6)
-5. ⏳ تطوير OTP WhatsApp (المهمة 7)
+5. ⏳ تطوير OTP email (المهمة 7)
 6. ⏳ تحديث صفحة التسجيل (المهمة 8)
 7. ⏳ إنشاء Admin Dashboard (المهمة 9)
 8. ⏳ تحديث مكونات الواجهة لدعم الأدوار الجديدة
