@@ -19,7 +19,7 @@ import { COMPANY_NAME } from '@/lib/access-control';
 
 const loginSchema = z.object({
   email: z.string().email('أدخل بريدًا إلكترونيًا صحيحًا'),
-  password: z.string().min(8, 'كلمة المرور يجب أن تكون 8 أحرف على الأقل'),
+  password: z.string().min(6, 'كلمة المرور يجب أن تكون 6 أحرف على الأقل'),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
