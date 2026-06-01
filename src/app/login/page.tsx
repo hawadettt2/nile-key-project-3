@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -28,7 +27,7 @@ const copy = {
   ar: {
     eyebrow: 'تسجيل الدخول الآمن',
     title: 'منصة مفتاح النيل',
-    description: 'الدخول يتم عبر البريد الإلكتروني وكلمة المرور فقط. لا يوجد أي اعتماد على WhatsApp في المصادقة.',
+    description: 'الدخول يتم عبر البريد الإلكتروني وكلمة المرور فقط. نظام آمن وموثوق للتجارة التصديرية.',
     email: 'البريد الإلكتروني',
     password: 'كلمة المرور',
     button: 'دخول',
@@ -40,7 +39,7 @@ const copy = {
   en: {
     eyebrow: 'Secure sign in',
     title: 'Nile Key Platform',
-    description: 'Authentication is email/password only. WhatsApp is not used for sign-in.',
+    description: 'Authentication via email and password only. Secure system for export trading.',
     email: 'Email',
     password: 'Password',
     button: 'Sign in',
@@ -117,7 +116,7 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>{t.email}</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="name@company.com" {...field} />
+                      <Input type="email" placeholder="name@company.com" {...field} disabled={submitting} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -130,7 +129,7 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>{t.password}</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••" {...field} />
+                      <Input type="password" placeholder="••••••" {...field} disabled={submitting} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
