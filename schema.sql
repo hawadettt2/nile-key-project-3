@@ -545,6 +545,11 @@ CREATE POLICY "Admins can manage suppliers"
 -- EMPLOYEE TASKS POLICIES (NEW)
 -- =====================================================
 
+DROP POLICY IF EXISTS "Employees can view assigned tasks" ON public.employee_tasks;
+DROP POLICY IF EXISTS "Managers can view all tasks" ON public.employee_tasks;
+DROP POLICY IF EXISTS "Managers can create tasks" ON public.employee_tasks;
+DROP POLICY IF EXISTS "Employees can update own tasks" ON public.employee_tasks;
+
 CREATE POLICY "Employees can view assigned tasks" 
   ON public.employee_tasks FOR SELECT 
   USING (auth.uid() = assigned_to);
@@ -577,6 +582,9 @@ CREATE POLICY "Employees can update own tasks"
 -- HS CODES POLICIES (NEW)
 -- =====================================================
 
+DROP POLICY IF EXISTS "Everyone can view hs codes" ON public.hs_codes;
+DROP POLICY IF EXISTS "Only admins can manage hs codes" ON public.hs_codes;
+
 CREATE POLICY "Everyone can view hs codes" 
   ON public.hs_codes FOR SELECT 
   USING (true);
@@ -594,6 +602,10 @@ CREATE POLICY "Only admins can manage hs codes"
 -- =====================================================
 -- EXPORT OPPORTUNITIES POLICIES (NEW)
 -- =====================================================
+
+DROP POLICY IF EXISTS "Users can view opportunities" ON public.export_opportunities;
+DROP POLICY IF EXISTS "Authorized users can create opportunities" ON public.export_opportunities;
+DROP POLICY IF EXISTS "Authorized users can update opportunities" ON public.export_opportunities;
 
 CREATE POLICY "Users can view opportunities" 
   ON public.export_opportunities FOR SELECT 
@@ -623,6 +635,9 @@ CREATE POLICY "Authorized users can update opportunities"
 -- SUPPLIER RATINGS POLICIES (NEW)
 -- =====================================================
 
+DROP POLICY IF EXISTS "Everyone can view supplier ratings" ON public.supplier_ratings;
+DROP POLICY IF EXISTS "Users can create ratings" ON public.supplier_ratings;
+
 CREATE POLICY "Everyone can view supplier ratings" 
   ON public.supplier_ratings FOR SELECT 
   USING (true);
@@ -640,6 +655,10 @@ CREATE POLICY "Users can create ratings"
 -- =====================================================
 -- EXPORT ALERTS POLICIES (NEW)
 -- =====================================================
+
+DROP POLICY IF EXISTS "Users can view own alerts" ON public.export_alerts;
+DROP POLICY IF EXISTS "System can create alerts" ON public.export_alerts;
+DROP POLICY IF EXISTS "Users can update own alerts" ON public.export_alerts;
 
 CREATE POLICY "Users can view own alerts" 
   ON public.export_alerts FOR SELECT 
