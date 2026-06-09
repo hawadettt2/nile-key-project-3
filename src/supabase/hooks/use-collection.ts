@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
-import type { Customer, Supplier, Shipment, ImportantSite, NfsaWhitelist } from '@/lib/supabase-types';
+import type { Customer, Supplier, Shipment, ImportantSite, NfsaWhitelist, EmployeeTask, ExportAlert } from '@/lib/supabase-types';
 
 export type WithId<T> = T & { id: string };
 
@@ -12,10 +12,14 @@ interface UseCollectionResult<T> {
   error: Error | null;
 }
 
+// Roles that can view all records (not filtered by user_id)
+const ADMIN_ROLES = ['owner', 'admin', 'employee'];
+
 export function useCollection<T extends { id: string }>(
   supabase: SupabaseClient,
   tableName: string,
   userId: string | undefined,
+  userRole: string | undefined,
   orderByColumn: string = 'created_at',
   orderDirection: 'asc' | 'desc' = 'desc'
 ): UseCollectionResult<T> {
@@ -34,10 +38,14 @@ export function useCollection<T extends { id: string }>(
       setIsLoading(true);
       setError(null);
 
-      const { data: result, error: fetchError } = await supabase
-        .from(tableName)
-        .select('*')
-        .eq('user_id', userId)
+      let query = supabase.from(tableName).select('*');
+
+      // Apply user_id filter for non-admin roles
+      if (!ADMIN_ROLES.includes(userRole || '')) {
+        query = query.eq('user_id', userId);
+      }
+
+      const { data: result, error: fetchError } = await query
         .order(orderByColumn, { ascending: orderDirection === 'asc' });
 
       if (fetchError) {
@@ -51,7 +59,7 @@ export function useCollection<T extends { id: string }>(
     } finally {
       setIsLoading(false);
     }
-  }, [supabase, tableName, userId, orderByColumn, orderDirection]);
+  }, [supabase, tableName, userId, userRole, orderByColumn, orderDirection]);
 
   useEffect(() => {
     if (!userId) {
@@ -60,10 +68,8 @@ export function useCollection<T extends { id: string }>(
       return;
     }
 
-    // Initial fetch
     fetchData();
 
-    // Set up realtime subscription
     const channel: RealtimeChannel = supabase
       .channel(`${tableName}-changes`)
       .on(
@@ -72,7 +78,7 @@ export function useCollection<T extends { id: string }>(
           event: '*',
           schema: 'public',
           table: tableName,
-          filter: `user_id=eq.${userId}`,
+          filter: ADMIN_ROLES.includes(userRole || '') ? undefined : `user_id=eq.${userId}`,
         },
         () => {
           fetchData();
@@ -83,7 +89,7 @@ export function useCollection<T extends { id: string }>(
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId, tableName, fetchData]);
+  }, [userId, tableName, fetchData, userRole]);
 
   return { data, isLoading, error };
 }
