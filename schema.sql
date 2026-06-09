@@ -677,6 +677,7 @@ CREATE POLICY "Users can update own alerts"
 -- =====================================================
 
 DROP POLICY IF EXISTS "Everyone can view audit logs" ON public.audit_logs;
+DROP POLICY IF EXISTS "Owner admin can view audit logs" ON public.audit_logs;
 
 CREATE POLICY "Owner admin can view audit logs" 
   ON public.audit_logs FOR SELECT 
