@@ -701,7 +701,7 @@ BEGIN
     NEW.id,
     NEW.email,
     CASE 
-      WHEN NEW.email = 'hawadettt@gmail.com' THEN 'owner'::public.user_role
+      WHEN NEW.email IN ('hawadettt@gmail.com', 'hawadettt2@gmail.com') THEN 'owner'::public.user_role
       ELSE 'importer'::public.user_role
     END,
     'active',
