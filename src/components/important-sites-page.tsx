@@ -29,7 +29,7 @@ import {
   buildTradeKnowledgeSummary,
   findTradeKnowledgeCategoryBySlug,
   getTradeKnowledgeCategories,
-  searchTradeInsights,
+  searchVerifiedTradeInsights,
   siteMatchesCategorySlug,
   type TradeKnowledgeCategory,
   type TradeInsight,
@@ -90,7 +90,7 @@ function InsightCard({ insight, labels }: { insight: TradeInsight; labels: typeo
     <Card className="h-full">
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={credibilityTone(insight.credibilityPercent)}>{insight.credibility_score}</Badge>
+          <Badge variant={credibilityTone(insight.credibilityPercent)}>{insight.credibilityPercent}%</Badge>
           <Badge variant="outline">{insight.main_category}</Badge>
         </div>
         <CardTitle className="text-lg leading-tight">{insight.title}</CardTitle>
@@ -168,7 +168,7 @@ export function ImportantSitesPage({ categoryId: categorySlug }: { categoryId?: 
 
   const visibleInsights = useMemo(() => {
     if (!category) return [];
-    const base = searchTradeInsights([category.name, search].filter(Boolean).join(' ').trim() || category.name, 30);
+    const base = searchVerifiedTradeInsights([category.name, search].filter(Boolean).join(' ').trim() || category.name, 30);
     return base.filter((site) => siteMatchesCategorySlug(site.main_category, category.slug)).slice(0, 12);
   }, [category, search]);
 

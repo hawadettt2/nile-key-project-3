@@ -54,7 +54,31 @@ DO $$ BEGIN
 END $$;
 
 -- =====================================================
--- 4. USERS PROFILES TABLE (Cleaned - No WhatsApp)
+-- 4. TRADE SOURCES TABLE (VERIFIED SOURCES ONLY)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS public.trade_sources (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title TEXT NOT NULL,
+  url TEXT NOT NULL UNIQUE,
+  main_category TEXT NOT NULL,
+  description TEXT,
+  credibility_score NUMERIC CHECK (credibility_score >= 0 AND credibility_score <= 100),
+  source_type TEXT CHECK (source_type IN ('official', 'institutional', 'market', 'logistics', 'customs')) NOT NULL,
+  is_verified BOOLEAN DEFAULT false,
+  last_verified_at TIMESTAMP WITH TIME ZONE,
+  country TEXT,
+  tags JSONB DEFAULT '[]'::jsonb,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_trade_sources_is_verified ON public.trade_sources(is_verified);
+CREATE INDEX IF NOT EXISTS idx_trade_sources_source_type ON public.trade_sources(source_type);
+CREATE INDEX IF NOT EXISTS idx_trade_sources_main_category ON public.trade_sources(main_category);
+CREATE INDEX IF NOT EXISTS idx_trade_sources_credibility_score ON public.trade_sources(credibility_score DESC);
+
+-- =====================================================
+-- 5. USERS PROFILES TABLE (Cleaned - No WhatsApp)
 -- =====================================================
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
@@ -117,7 +141,7 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
 CREATE TABLE IF NOT EXISTS public.shipments (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id),
-  customer_id UUID,
+  customer_id UUID REFERENCES public.customers(id) ON DELETE CASCADE,
   shipment_type TEXT,
   weight_kg DECIMAL,
   quantity INTEGER,
@@ -176,17 +200,22 @@ CREATE INDEX IF NOT EXISTS idx_suppliers_governorate ON public.suppliers(governo
 CREATE INDEX IF NOT EXISTS idx_suppliers_nfsa_whitelisted ON public.suppliers(is_nfsa_whitelisted);
 
 -- =====================================================
--- 9. IMPORTANT SITES TABLE
+-- 10. IMPORTANT SITES TABLE (Verified Sources Only)
 -- =====================================================
 CREATE TABLE IF NOT EXISTS public.important_sites (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   url TEXT NOT NULL,
   description TEXT,
-  category_id UUID,
-  icon TEXT DEFAULT 'Globe',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  category_id UUID REFERENCES public.site_categories(id) ON DELETE CASCADE,
+  is_verified BOOLEAN DEFAULT false,
+  source_type TEXT CHECK (source_type IN ('official', 'institutional', 'market', 'logistics', 'customs')),
+  credibility_score NUMERIC CHECK (credibility_score >= 0 AND credibility_score <= 100),
+  country TEXT,
+  tags JSONB DEFAULT '[]'::jsonb,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_important_sites_category_id ON public.important_sites(category_id);
@@ -286,7 +315,7 @@ CREATE TABLE IF NOT EXISTS public.export_opportunities (
   discovered_by UUID REFERENCES auth.users(id),
   product_name_ar TEXT NOT NULL,
   product_name_en TEXT NOT NULL,
-  hs_code_id UUID REFERENCES public.hs_codes(id),
+  hs_code_id UUID REFERENCES public.hs_codes(id) ON DELETE SET NULL,
   target_country TEXT NOT NULL,
   target_market_region TEXT,
   market_size_usd DECIMAL,
@@ -484,13 +513,19 @@ CREATE POLICY "Admins can view all customers"
 -- SUPPLIERS POLICIES
 -- =====================================================
 
-DROP POLICY IF EXISTS "Everyone can view suppliers" ON public.suppliers;
+DROP POLICY IF EXISTS "Authorized can view suppliers" ON public.suppliers;
 DROP POLICY IF EXISTS "Suppliers can update own data" ON public.suppliers;
 DROP POLICY IF EXISTS "Admins can manage suppliers" ON public.suppliers;
 
-CREATE POLICY "Everyone can view suppliers" 
+CREATE POLICY "Authorized can view suppliers" 
   ON public.suppliers FOR SELECT 
-  USING (true);
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles 
+      WHERE id = auth.uid() 
+      AND role IN ('owner', 'admin', 'employee', 'importer', 'agent')
+    )
+  );
 
 CREATE POLICY "Suppliers can update own data" 
   ON public.suppliers FOR UPDATE 
@@ -619,14 +654,20 @@ CREATE POLICY "Users can update own alerts"
   USING (auth.uid() = user_id);
 
 -- =====================================================
--- AUDIT LOGS POLICIES (Read-Only)
+-- AUDIT LOGS POLICIES (Restricted - Owner/Admin Only)
 -- =====================================================
 
 DROP POLICY IF EXISTS "Everyone can view audit logs" ON public.audit_logs;
 
-CREATE POLICY "Everyone can view audit logs" 
+CREATE POLICY "Owner admin can view audit logs" 
   ON public.audit_logs FOR SELECT 
-  USING (true);
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles 
+      WHERE id = auth.uid() 
+      AND role IN ('owner', 'admin')
+    )
+  );
 
 -- =====================================================
 -- FUNCTIONS

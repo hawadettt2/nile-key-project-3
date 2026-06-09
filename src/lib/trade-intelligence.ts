@@ -5,8 +5,12 @@ export type TradeKnowledgeSite = {
   url: string;
   main_category: string;
   description: string;
-  credibility_score: string;
+  credibility_score: number;
   ai_analysis_and_opportunities: string;
+  is_verified?: boolean;
+  verificationStatus?: 'verified' | 'pending' | 'rejected';
+  sourceType?: 'official' | 'institutional' | 'market' | 'logistics' | 'customs';
+  lastVerifiedAt?: string;
 };
 
 export type TradeInsight = TradeKnowledgeSite & {
@@ -38,6 +42,36 @@ export type TradeKnowledgeSummary = {
 };
 
 const SITES = tradeSites as TradeKnowledgeSite[];
+
+const SUSPECT_PATTERNS = [
+  /Portal\s*\d+/i,
+  /Insights Agency v\d+/i,
+  /Operator v\d+/i,
+  /Bureau\s*\d+/i,
+  /trade-insights-hub-\d+/i,
+  /customs-gov-portal-\d+/i,
+  /logistics-tracker-\d+/i,
+  /compliance-finance-\d+/i,
+];
+
+function isSuspectSource(site: TradeKnowledgeSite): boolean {
+  if (site.is_verified === true) return false;
+  if (site.verificationStatus === 'verified') return false;
+  for (const pattern of SUSPECT_PATTERNS) {
+    if (pattern.test(site.title) || pattern.test(site.url)) return true;
+  }
+  return false;
+}
+
+export function getVerifiedTradeSources(): TradeKnowledgeSite[] {
+  return SITES.filter(site => !isSuspectSource(site) && site.is_verified !== false);
+}
+
+export function getTopVerifiedSources(limit = 12): TradeKnowledgeSite[] {
+  return getVerifiedTradeSources()
+    .sort((a, b) => (b.credibility_score || 0) - (a.credibility_score || 0))
+    .slice(0, limit);
+}
 
 const CATEGORY_ALIASES: Record<string, string> = {
   'الجهاتها الحكومية والجمارك والوزارات الاستراتيجية': 'الجهات الحكومية والجمارك والوزارات الاستراتيجية',
@@ -115,8 +149,9 @@ export function siteMatchesCategorySlug(categoryName: string, slug: string): boo
   return slugifyTradeCategory(categoryName) === slug;
 }
 
-function extractPercent(value: string): number {
-  const match = value.match(/(\d{1,3})/);
+function extractPercent(value: string | number): number {
+  if (typeof value === 'number') return Math.min(100, value);
+  const match = value?.match?.(/(\d{1,3})/);
   return match ? Math.min(100, Number.parseInt(match[1], 10)) : 0;
 }
 
@@ -249,6 +284,20 @@ export function searchTradeInsights(query: string, limit = 12): TradeInsight[] {
     .sort((a, b) => b.relevanceScore - a.relevanceScore || b.credibilityPercent - a.credibilityPercent || a.title.localeCompare(b.title, 'ar'));
 
   return ranked.slice(0, limit);
+}
+
+export function searchVerifiedTradeInsights(query: string, limit = 12): TradeInsight[] {
+  const normalizedQuery = query.trim();
+  return searchTradeInsights(normalizedQuery, 100)
+    .filter(insight => insight.is_verified !== false)
+    .slice(0, limit);
+}
+
+export function getOpportunityFeed() {
+  return getVerifiedTradeSources()
+    .filter(site => site.sourceType === 'market' || site.sourceType === 'official')
+    .sort((a, b) => (b.credibility_score || 0) - (a.credibility_score || 0))
+    .slice(0, 12);
 }
 
 export function buildTradeKnowledgeSummary(query: string): TradeKnowledgeSummary {

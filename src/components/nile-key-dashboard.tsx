@@ -1,15 +1,12 @@
 'use client';
 
 import { useState, useMemo } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from 'zod';
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, Package, AlertTriangle, Truck, DollarSign, CheckCircle, Bot, Languages, FileText } from "lucide-react";
+import { Loader2, Package, AlertTriangle, Truck, DollarSign, CheckCircle, Bot, Languages, FileText, TrendingUp, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSupabase } from "@/supabase/provider";
 import { supabase } from "@/supabase/client";
@@ -17,6 +14,7 @@ import { useCollection } from "@/supabase/hooks/use-collection";
 import { Textarea } from "@/components/ui/textarea";
 import { useLanguage } from "@/context/language-provider";
 import { useAIChat } from "@/ai/hooks/use-ai-chat";
+import { getTradeKnowledgeStats } from "@/lib/trade-intelligence";
 
 export default function NileKeyDashboard() {
   const { language, t } = useLanguage();
@@ -50,6 +48,40 @@ export default function NileKeyDashboard() {
     'desc'
   );
 
+  const { data: customersData, isLoading: isLoadingCustomers } = useCollection<{ id: string }>(
+    supabase,
+    'customers',
+    user?.id,
+    'created_at',
+    'desc'
+  );
+
+  const { data: tasksData, isLoading: isLoadingTasks } = useCollection<{ status: string }>(
+    supabase,
+    'employee_tasks',
+    user?.id,
+    'created_at',
+    'desc'
+  );
+
+  const { data: alertsData, isLoading: isLoadingAlerts } = useCollection<{ id: string }>(
+    supabase,
+    'export_alerts',
+    user?.id,
+    'created_at',
+    'desc'
+  );
+
+  const { data: opportunitiesData, isLoading: isLoadingOpportunities } = useCollection<{ id: string }>(
+    supabase,
+    'export_opportunities',
+    user?.id,
+    'created_at',
+    'desc'
+  );
+
+  const tradeStats = getTradeKnowledgeStats();
+
   const stats = useMemo(() => {
     if (!shipments) return { totalShipments: 0, totalValue: 0, inTransit: 0, completed: 0 };
     const totalValue = shipments.reduce((sum, s) => sum + (s.price || 0), 0);
@@ -57,6 +89,12 @@ export default function NileKeyDashboard() {
     const completed = shipments.filter(s => s.status === t.shipmentStatusOption5).length;
     return { totalShipments: shipments.length, totalValue, inTransit, completed };
   }, [shipments, t]);
+
+  const totalCustomers = customersData?.length ?? 0;
+  const openTasks = tasksData?.filter(t => t.status === 'pending' || t.status === 'in_progress').length ?? 0;
+  const totalAlerts = alertsData?.length ?? 0;
+  const exportOpportunities = opportunitiesData?.length ?? 0;
+  const verifiedSources = tradeStats.highCredibilityCount;
 
   const generateVerifiedAiText = async (systemPrompt: string, prompt: string) => {
     const response = await fetch('/api/ai', {
@@ -134,44 +172,62 @@ export default function NileKeyDashboard() {
               <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
             ) : user ? (
               <div className="flex flex-col gap-6">
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">{t.statsTotalShipments}</CardTitle>
-                      <Package className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{isLoadingShipments ? <Loader2 className="h-8 w-16 animate-spin" /> : stats.totalShipments}</div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">{t.statsTotalValue}</CardTitle>
-                      <DollarSign className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{isLoadingShipments ? <Loader2 className="h-8 w-32 animate-spin" /> : `$${stats.totalValue.toLocaleString()}`}</div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">{t.statsInTransit}</CardTitle>
-                      <Truck className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{isLoadingShipments ? <Loader2 className="h-8 w-16 animate-spin" /> : stats.inTransit}</div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">{t.statsCompleted}</CardTitle>
-                      <CheckCircle className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{isLoadingShipments ? <Loader2 className="h-8 w-16 animate-spin" /> : stats.completed}</div>
-                    </CardContent>
-                  </Card>
-                </div>
+<div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+                   <Card>
+                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                       <CardTitle className="text-sm font-medium">{language === 'ar' ? 'العملاء' : 'Customers'}</CardTitle>
+                       <Package className="h-4 w-4 text-muted-foreground" />
+                     </CardHeader>
+                     <CardContent>
+                       <div className="text-2xl font-bold">{isLoadingCustomers ? <Loader2 className="h-8 w-16 animate-spin" /> : totalCustomers}</div>
+                     </CardContent>
+                   </Card>
+                   <Card>
+                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                       <CardTitle className="text-sm font-medium">{t.statsTotalShipments}</CardTitle>
+                       <Truck className="h-4 w-4 text-muted-foreground" />
+                     </CardHeader>
+                     <CardContent>
+                       <div className="text-2xl font-bold">{isLoadingShipments ? <Loader2 className="h-8 w-16 animate-spin" /> : stats.totalShipments}</div>
+                     </CardContent>
+                   </Card>
+                   <Card>
+                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                       <CardTitle className="text-sm font-medium">{language === 'ar' ? 'المهام المفتوحة' : 'Open Tasks'}</CardTitle>
+                       <FileText className="h-4 w-4 text-muted-foreground" />
+                     </CardHeader>
+                     <CardContent>
+                       <div className="text-2xl font-bold">{isLoadingTasks ? <Loader2 className="h-8 w-16 animate-spin" /> : openTasks}</div>
+                     </CardContent>
+                   </Card>
+                   <Card>
+                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                       <CardTitle className="text-sm font-medium">{language === 'ar' ? 'التنبيهات' : 'Alerts'}</CardTitle>
+                       <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                     </CardHeader>
+                     <CardContent>
+                       <div className="text-2xl font-bold">{isLoadingAlerts ? <Loader2 className="h-8 w-16 animate-spin" /> : totalAlerts}</div>
+                     </CardContent>
+                   </Card>
+                   <Card>
+                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                       <CardTitle className="text-sm font-medium">{language === 'ar' ? 'فرص التصدير' : 'Opportunities'}</CardTitle>
+                       <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                     </CardHeader>
+                     <CardContent>
+                       <div className="text-2xl font-bold">{isLoadingOpportunities ? <Loader2 className="h-8 w-16 animate-spin" /> : exportOpportunities}</div>
+                     </CardContent>
+                   </Card>
+                   <Card>
+                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                       <CardTitle className="text-sm font-medium">{language === 'ar' ? 'مصادر موثقة' : 'Verified Sources'}</CardTitle>
+                       <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                     </CardHeader>
+                     <CardContent>
+                       <div className="text-2xl font-bold">{tradeStats.totalSites}</div>
+                     </CardContent>
+                   </Card>
+                 </div>
 
                 <Card>
                   <CardHeader>
