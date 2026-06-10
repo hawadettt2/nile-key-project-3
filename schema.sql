@@ -141,7 +141,7 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
 CREATE TABLE IF NOT EXISTS public.shipments (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id),
-  customer_id UUID REFERENCES public.customers(id) ON DELETE CASCADE,
+  customer_id UUID,
   shipment_type TEXT,
   weight_kg DECIMAL,
   quantity INTEGER,
@@ -208,7 +208,7 @@ CREATE TABLE IF NOT EXISTS public.important_sites (
   title TEXT NOT NULL,
   url TEXT NOT NULL,
   description TEXT,
-  category_id UUID REFERENCES public.site_categories(id) ON DELETE CASCADE,
+  category_id UUID,
   is_verified BOOLEAN DEFAULT false,
   source_type TEXT CHECK (source_type IN ('official', 'institutional', 'market', 'logistics', 'customs')),
   credibility_score NUMERIC CHECK (credibility_score >= 0 AND credibility_score <= 100),
@@ -797,6 +797,17 @@ INSERT INTO public.hs_codes (code, product_name_ar, product_name_en, product_des
   ('0805.10.00', 'البرتقال', 'Oranges', 'Oranges, fresh or dried', 'Fruits', true, 0.08),
   ('0806.10.00', 'العنب', 'Grapes', 'Grapes, fresh or dried', 'Fruits', true, 0.10)
 ON CONFLICT (code) DO NOTHING;
+
+-- =====================================================
+-- ADD FOREIGN KEY CONSTRAINTS (After all tables exist)
+-- =====================================================
+ALTER TABLE IF EXISTS public.shipments 
+  ADD CONSTRAINT IF NOT EXISTS shipments_customer_id_fkey 
+  FOREIGN KEY (customer_id) REFERENCES public.customers(id) ON DELETE CASCADE;
+
+ALTER TABLE IF EXISTS public.important_sites 
+  ADD CONSTRAINT IF NOT EXISTS important_sites_category_id_fkey 
+  FOREIGN KEY (category_id) REFERENCES public.site_categories(id) ON DELETE CASCADE;
 
 -- =====================================================
 -- END OF SCHEMA
