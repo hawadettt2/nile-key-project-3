@@ -801,13 +801,27 @@ ON CONFLICT (code) DO NOTHING;
 -- =====================================================
 -- ADD FOREIGN KEY CONSTRAINTS (After all tables exist)
 -- =====================================================
-ALTER TABLE IF EXISTS public.shipments 
-  ADD CONSTRAINT IF NOT EXISTS shipments_customer_id_fkey 
-  FOREIGN KEY (customer_id) REFERENCES public.customers(id) ON DELETE CASCADE;
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint 
+    WHERE conname = 'shipments_customer_id_fkey'
+  ) THEN
+    ALTER TABLE public.shipments 
+      ADD CONSTRAINT shipments_customer_id_fkey 
+      FOREIGN KEY (customer_id) REFERENCES public.customers(id) ON DELETE CASCADE;
+  END IF;
+END $$;
 
-ALTER TABLE IF EXISTS public.important_sites 
-  ADD CONSTRAINT IF NOT EXISTS important_sites_category_id_fkey 
-  FOREIGN KEY (category_id) REFERENCES public.site_categories(id) ON DELETE CASCADE;
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint 
+    WHERE conname = 'important_sites_category_id_fkey'
+  ) THEN
+    ALTER TABLE public.important_sites 
+      ADD CONSTRAINT important_sites_category_id_fkey 
+      FOREIGN KEY (category_id) REFERENCES public.site_categories(id) ON DELETE CASCADE;
+  END IF;
+END $$;
 
 -- =====================================================
 -- END OF SCHEMA
