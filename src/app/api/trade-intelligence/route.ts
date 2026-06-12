@@ -101,45 +101,11 @@ export async function POST(req: Request) {
       },
     });
 
-    return Response.json({
+return Response.json({
       mode: 'ai',
       summary,
       aiBrief: generated.generated_text ?? '',
       insights: verifiedInsights,
-    });
-  } catch (error: any) {
-    console.error('trade-intelligence route error', error);
-    return Response.json(
-      { error: error?.message || 'Failed to build trade intelligence summary' },
-      { status: 500 }
-    );
-  }
-}
-
-    const hf = new HfInference(apiKey);
-    const prompt = [
-      NO_FABRICATION_PROMPT,
-      `سؤال المستخدم: ${query || 'استعراض عام لفرص التصدير'}`,
-      'المصادر الموثقة:',
-      context,
-    ].join('\n\n');
-
-    const generated = await hf.textGeneration({
-      model: 'meta-llama/Meta-Llama-3-8B-Instruct',
-      inputs: prompt,
-      parameters: {
-        max_new_tokens: 420,
-        temperature: 0.15,
-        top_p: 0.8,
-        return_full_text: false,
-      },
-    });
-
-    return Response.json({
-      mode: 'ai',
-      summary,
-      aiBrief: generated.generated_text ?? '',
-      insights: summary.topInsights,
     });
   } catch (error: any) {
     console.error('trade-intelligence route error', error);
