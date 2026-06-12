@@ -252,7 +252,7 @@ export function ImportantSitesPage({ categoryId: categorySlug }: { categoryId?: 
             </Card>
             <Card className="border-dashed">
               <CardHeader className="p-4 pb-2"><CardDescription>{language === 'ar' ? 'الأعلى موثوقية' : 'High credibility'}</CardDescription></CardHeader>
-              <CardContent className="p-4 pt-0 text-2xl font-semibold">{category.topSites.filter((site) => /9\d|100/.test(site.credibility_score)).length}</CardContent>
+              <CardContent className="p-4 pt-0 text-2xl font-semibold">{category.topSites.filter((site) => /9\d|100/.test(String(site.credibility_score))).length}</CardContent>
             </Card>
             <Card className="border-dashed">
               <CardHeader className="p-4 pb-2"><CardDescription>{language === 'ar' ? 'النتائج الظاهرة' : 'Visible results'}</CardDescription></CardHeader>
