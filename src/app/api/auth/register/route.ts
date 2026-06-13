@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       email_confirm: true,
       user_metadata: {
         display_name: displayName,
-        role: 'agent', -- Default: Agent (needs owner approval)
+        role: 'agent', // Default: Agent (needs owner approval)
         company_name: 'مفتاح النيل',
       },
     });
