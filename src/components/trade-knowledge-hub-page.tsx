@@ -71,14 +71,14 @@ function credibilityTone(percent: number) {
   return 'outline';
 }
 
-function SourceCard({ insight, labels }: { insight: TradeInsight; labels: typeof copy.ar }) {
+function SourceCard({ insight, labels }: { insight: TradeInsight; labels: typeof copy.ar | typeof copy.en }) {
   const isVerified = insight.is_verified === true || (insight.credibilityPercent || 0) >= 90;
   return (
     <Card className="h-full">
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant={credibilityTone(insight.credibilityPercent)}>{insight.credibilityPercent}%</Badge>
-          {isVerified && <Badge variant="default" className="bg-green-600"><CheckCircle2 className="h-3 w-3 me-1" />{language === 'ar' ? 'موثق' : 'Verified'}</Badge>}
+          {isVerified && <Badge variant="default" className="bg-green-600"><CheckCircle2 className="h-3 w-3 me-1" />{typeof labels === 'string' ? 'موثق' : labels.title === 'مركز المعرفة التصديرية' ? 'موثق' : 'Verified'}</Badge>}
           <Badge variant="outline">{insight.main_category}</Badge>
         </div>
         <CardTitle className="text-lg leading-tight">{insight.title}</CardTitle>
