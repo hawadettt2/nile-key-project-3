@@ -803,6 +803,23 @@ INSERT INTO public.hs_codes (code, product_name_ar, product_name_en, product_des
 ON CONFLICT (code) DO NOTHING;
 
 -- =====================================================
+-- MIGRATION: Fix invalid role values (user -> importer)
+-- =====================================================
+UPDATE public.profiles 
+SET role = 'importer'::public.user_role, 
+    status = 'active', 
+    email_verified = true
+WHERE role::text NOT IN ('owner', 'admin', 'employee', 'importer', 'supplier', 'agent')
+   OR role IS NULL;
+
+-- Force owner for specific emails
+UPDATE public.profiles 
+SET role = 'owner'::public.user_role, 
+    status = 'active', 
+    email_verified = true
+WHERE email IN ('hawadettt@gmail.com', 'hawadettt2@gmail.com');
+
+-- =====================================================
 -- ADD FOREIGN KEY CONSTRAINTS (After all tables exist)
 -- =====================================================
 DO $$ BEGIN
