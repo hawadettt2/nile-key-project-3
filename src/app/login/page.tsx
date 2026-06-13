@@ -35,6 +35,8 @@ const copy = {
     errorTitle: 'تعذر تسجيل الدخول',
     errorDescription: 'تحقق من البريد الإلكتروني وكلمة المرور.',
     footer: 'الوصول مخصص لأعضاء شركة مفتاح النيل فقط.',
+    registerLink: 'ليس لديك حساب؟ اطلب الانضمام عبر البريد الإلكتروني',
+    registerButton: 'انضم إلينا',
   },
   en: {
     eyebrow: 'Secure sign in',
@@ -47,6 +49,8 @@ const copy = {
     errorTitle: 'Sign in failed',
     errorDescription: 'Check your email and password.',
     footer: 'Access is limited to Nile Key team members.',
+    registerLink: "Don't have an account? Request to join via email",
+    registerButton: 'Join Us',
   },
 } as const;
 
@@ -141,11 +145,14 @@ export default function LoginPage() {
               </Button>
             </form>
           </Form>
-          <div className="mt-6 rounded-xl border bg-muted/30 p-4 text-sm text-muted-foreground">
-            <div className="font-medium text-foreground">{COMPANY_NAME}</div>
-            <div className="mt-1">{t.footer}</div>
-          </div>
-        </CardContent>
+<div className="mt-6 rounded-xl border bg-muted/30 p-4 text-sm text-muted-foreground">
+             <div className="font-medium text-foreground">{COMPANY_NAME}</div>
+             <div className="mt-1">{t.footer}</div>
+           </div>
+           <div className="mt-4 text-center text-sm">
+             <span className="text-muted-foreground">{t.registerLink}</span>
+           </div>
+         </CardContent>
       </Card>
     </div>
   );

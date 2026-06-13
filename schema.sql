@@ -694,21 +694,28 @@ CREATE POLICY "Owner admin can view audit logs"
 -- =====================================================
 
 -- Function to handle new user registration
-CREATE OR REPLACE FUNCTION public.handle_new_user() 
+CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
+  -- Try to insert, if exists update role
   INSERT INTO public.profiles (id, email, role, status, email_verified)
   VALUES (
     NEW.id,
     NEW.email,
-    CASE 
+    CASE
       WHEN NEW.email IN ('hawadettt@gmail.com', 'hawadettt2@gmail.com') THEN 'owner'::public.user_role
       ELSE 'importer'::public.user_role
     END,
     'active',
     true
   )
-  ON CONFLICT (id) DO NOTHING;
+  ON CONFLICT (id) DO UPDATE SET
+    role = CASE
+      WHEN EXCLUDED.email IN ('hawadettt@gmail.com', 'hawadettt2@gmail.com') THEN 'owner'::public.user_role
+      ELSE profiles.role
+    END,
+    email_verified = true,
+    updated_at = NOW();
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
