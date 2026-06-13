@@ -16,52 +16,51 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Server config missing' }, { status: 500 });
     }
 
-    // Create owner profile directly if missing
+    // Find user by email
     const { data: existing } = await adminSupabase
       .from('profiles')
       .select('id, email, role')
-      .or('email.eq.hawadettt2@gmail.com,id.eq.hawadettt2@gmail.com')
+      .eq('email', 'hawadettt2@gmail.com')
       .single();
 
-    if (!existing) {
-      // Create via auth first
-      const { data: newUser, error: createErr } = await adminSupabase.auth.admin.createUser({
-        email: 'hawadettt2@gmail.com',
-        password: '123456',
-        email_confirm: true,
-        user_metadata: { display_name: 'Owner', role: 'owner' },
-      });
+    if (existing) {
+      // Update role to owner
+      const { error: updateErr } = await adminSupabase
+        .from('profiles')
+        .update({ role: 'owner', status: 'active', email_verified: true })
+        .eq('email', 'hawadettt2@gmail.com');
 
-      if (createErr) {
-        return NextResponse.json({ error: createErr.message }, { status: 400 });
+      if (updateErr) {
+        return NextResponse.json({ error: updateErr.message }, { status: 500 });
       }
-
-      const { error: profileErr } = await adminSupabase.from('profiles').insert({
-        id: newUser.user?.id,
-        email: 'hawadettt2@gmail.com',
-        role: 'owner',
-        status: 'active',
-        email_verified: true,
-      });
-
-      if (profileErr) {
-        return NextResponse.json({ error: profileErr.message }, { status: 500 });
-      }
-
-      return NextResponse.json({ success: true, created: true });
+      return NextResponse.json({ success: true, message: 'Owner role updated', userId: existing.id });
     }
 
-    // Ensure owner role
-    const { error: updateErr } = await adminSupabase
-      .from('profiles')
-      .update({ role: 'owner', status: 'active', email_verified: true })
-      .eq('email', 'hawadettt2@gmail.com');
+    // Create owner if not exists
+    const { data: newUser, error: createErr } = await adminSupabase.auth.admin.createUser({
+      email: 'hawadettt2@gmail.com',
+      password: '123456',
+      email_confirm: true,
+      user_metadata: { display_name: 'Owner', role: 'owner' },
+    });
 
-    if (updateErr) {
-      return NextResponse.json({ error: updateErr.message }, { status: 500 });
+    if (createErr) {
+      return NextResponse.json({ error: createErr.message }, { status: 400 });
     }
 
-    return NextResponse.json({ success: true, message: 'Owner role ensured' });
+    const { error: profileErr } = await adminSupabase.from('profiles').insert({
+      id: newUser.user?.id,
+      email: 'hawadettt2@gmail.com',
+      role: 'owner',
+      status: 'active',
+      email_verified: true,
+    });
+
+    if (profileErr) {
+      return NextResponse.json({ error: profileErr.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, created: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
