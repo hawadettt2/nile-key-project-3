@@ -85,7 +85,7 @@ function credibilityTone(percent: number) {
   return 'outline';
 }
 
-function InsightCard({ insight, labels }: { insight: TradeInsight; labels: typeof copy.ar }) {
+function InsightCard({ insight, labels }: { insight: TradeInsight; labels: typeof copy.ar | typeof copy.en }) {
   return (
     <Card className="h-full">
       <CardHeader className="space-y-3">
