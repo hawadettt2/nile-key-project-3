@@ -450,7 +450,8 @@ CREATE POLICY "Admins can update all profiles"
       WHERE id = auth.uid() 
       AND role IN ('owner', 'admin')
     )
-  );
+  )
+  WITH CHECK (true); -- Allow owners/admins to update any field including role
 
 -- =====================================================
 -- SHIPMENTS POLICIES

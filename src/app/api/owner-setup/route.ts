@@ -16,36 +16,52 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Server config missing' }, { status: 500 });
     }
 
+    // Create owner profile directly if missing
     const { data: existing } = await adminSupabase
       .from('profiles')
-      .select('id, role')
-      .eq('email', 'hawadettt2@gmail.com')
+      .select('id, email, role')
+      .or('email.eq.hawadettt2@gmail.com,id.eq.hawadettt2@gmail.com')
       .single();
 
     if (!existing) {
-      const { data, error } = await adminSupabase.auth.admin.createUser({
+      // Create via auth first
+      const { data: newUser, error: createErr } = await adminSupabase.auth.admin.createUser({
         email: 'hawadettt2@gmail.com',
         password: '123456',
         email_confirm: true,
         user_metadata: { display_name: 'Owner', role: 'owner' },
       });
 
-      if (error) {
-        return NextResponse.json({ error: error.message }, { status: 400 });
+      if (createErr) {
+        return NextResponse.json({ error: createErr.message }, { status: 400 });
       }
-      return NextResponse.json({ success: true, created: true, userId: data.user?.id });
+
+      const { error: profileErr } = await adminSupabase.from('profiles').insert({
+        id: newUser.user?.id,
+        email: 'hawadettt2@gmail.com',
+        role: 'owner',
+        status: 'active',
+        email_verified: true,
+      });
+
+      if (profileErr) {
+        return NextResponse.json({ error: profileErr.message }, { status: 500 });
+      }
+
+      return NextResponse.json({ success: true, created: true });
     }
 
-    const { error: updateError } = await adminSupabase
+    // Ensure owner role
+    const { error: updateErr } = await adminSupabase
       .from('profiles')
-      .update({ role: 'owner' })
+      .update({ role: 'owner', status: 'active', email_verified: true })
       .eq('email', 'hawadettt2@gmail.com');
 
-    return NextResponse.json({ 
-      success: true, 
-      message: existing ? 'Owner role ensured' : 'Created', 
-      userId: existing?.id 
-    });
+    if (updateErr) {
+      return NextResponse.json({ error: updateErr.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, message: 'Owner role ensured' });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
