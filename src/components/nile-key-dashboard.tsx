@@ -56,7 +56,7 @@ export default function NileKeyDashboard() {
     'desc'
   );
 
-  const { data: tasksData, isLoading: isLoadingTasks } = useCollection<{ status: string }>(
+  const { data: tasksData, isLoading: isLoadingTasks } = useCollection<{ id: string; status: string }>(
     supabase,
     'employee_tasks',
     user?.id,
