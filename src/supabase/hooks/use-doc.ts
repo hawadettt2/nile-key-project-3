@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { SupabaseClient } from '@supabase/supabase-js';
-import type { Customer, Supplier, Shipment, ImportantSite, NfsaWhitelist } from '@/lib/supabase-types';
+import type { Customer, Supplier, Shipment, ImportantSite } from '@/lib/supabase-types';
 
 export type WithId<T> = T & { id: string };
 

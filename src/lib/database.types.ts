@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type UserRole = 'owner' | 'admin' | 'employee' | 'importer' | 'supplier' | 'agent';
+export type UserRole = 'owner' | 'admin' | 'employee' | 'importer' | 'supplier' | 'agent' | 'user';
 
 export interface Database {
   public: {
@@ -197,7 +197,7 @@ export interface Database {
           phone: string | null;
           address: string | null;
           governorate: string | null;
-          is_nfsa_whitelisted: boolean | null;
+
           created_at: string;
           updated_at: string;
         };
@@ -210,7 +210,7 @@ export interface Database {
           phone?: string | null;
           address?: string | null;
           governorate?: string | null;
-          is_nfsa_whitelisted?: boolean | null;
+
           created_at?: string;
           updated_at?: string;
         };
@@ -223,7 +223,7 @@ export interface Database {
           phone?: string | null;
           address?: string | null;
           governorate?: string | null;
-          is_nfsa_whitelisted?: boolean | null;
+
           created_at?: string;
           updated_at?: string;
         };
@@ -285,66 +285,8 @@ export interface Database {
           icon?: string | null;
           created_at?: string;
         };
-      };
-      nfsa_whitelist: {
-        Row: {
-          id: string;
-          supplier_name: string;
-          governorate: string | null;
-          address: string | null;
-          contact_person: string | null;
-          phone: string | null;
-          email: string | null;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          supplier_name: string;
-          governorate?: string | null;
-          address?: string | null;
-          contact_person?: string | null;
-          phone?: string | null;
-          email?: string | null;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          supplier_name?: string;
-          governorate?: string | null;
-          address?: string | null;
-          contact_person?: string | null;
-          phone?: string | null;
-          email?: string | null;
-          created_at?: string;
-        };
-      };
-      predictive_analytics: {
-        Row: {
-          id: string;
-          user_id: string | null;
-          crop_type: string | null;
-          harvest_time_prediction: string | null;
-          market_opportunities: Json | null;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          user_id?: string | null;
-          crop_type?: string | null;
-          harvest_time_prediction?: string | null;
-          market_opportunities?: Json | null;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          user_id?: string | null;
-          crop_type?: string | null;
-          harvest_time_prediction?: string | null;
-          market_opportunities?: Json | null;
-          created_at?: string;
-        };
-      };
-      employee_tasks: {
+};
+        employee_tasks: {
         Row: {
           id: string;
           assigned_by: string;

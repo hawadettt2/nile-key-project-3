@@ -19,7 +19,6 @@ const ROUTE_RULES: Array<{ pattern: RegExp; roles: UserRole[] }> = [
   { pattern: /^\/customers(\/|$)/, roles: ['owner', 'admin', 'employee', 'importer'] },
   { pattern: /^\/suppliers(\/|$)/, roles: ['owner', 'admin', 'employee', 'supplier'] },
   { pattern: /^\/shipments(\/|$)/, roles: ['owner', 'admin', 'employee', 'importer', 'agent'] },
-  { pattern: /^\/important-sites(\/|$)/, roles: ['owner', 'admin', 'employee', 'importer', 'supplier', 'agent'] },
   { pattern: /^\/predictive-analytics(\/|$)/, roles: ['owner', 'admin', 'employee'] },
   { pattern: /^\/settings(\/|$)/, roles: ACTIVE_ROLES },
 ];
@@ -36,7 +35,7 @@ export function isOpenRoute(pathname: string): boolean {
 }
 
 export function isPublicApiRoute(pathname: string): boolean {
-  return pathname.startsWith('/api/auth') || pathname.startsWith('/api/trade-intelligence');
+  return pathname.startsWith('/api/auth');
 }
 
 export function isRoleAllowedForPath(role: UserRole | null | undefined, pathname: string): boolean {

@@ -26,9 +26,7 @@ import {
   Globe,
   ChevronRight,
   PlusCircle,
-  Brain,
   Shield,
-  BadgeCheck,
 } from "lucide-react";
 import { useSupabase } from "@/supabase/provider";
 import { supabase } from "@/supabase/client";
@@ -43,12 +41,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { useDoc } from "@/supabase/hooks/use-doc";
-import { EditAvatarDialog } from "../edit-avatar-dialog";
-import { PlaceHolderImages } from "@/lib/placeholder-images";
-import type { TranslationKeys } from "@/lib/i18n";
-import { getTradeKnowledgeCategories } from "@/lib/trade-intelligence";
 
-const userAvatar = PlaceHolderImages.find(img => img.id === 'user-avatar');
 
 const supportedLanguages = [
   { code: 'en', name: 'English' },
@@ -60,7 +53,6 @@ export function AppSidebar() {
   const { user, isLoading: isUserLoading, signOut } = useSupabase();
   const { toast } = useToast();
   const pathname = usePathname();
-  const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
 
   // CRITICAL OWNER IDENTITY
   const isOwnerByEmail = user?.email === 'hawadettt@gmail.com';
@@ -76,8 +68,7 @@ export function AppSidebar() {
     'profiles',
     user?.id
   );
-  const tradeKnowledgeCategories = useMemo(() => getTradeKnowledgeCategories().slice(0, 4), []);
-
+  
   // Updated to use new role system
   const hasAdminRole = userProfile?.role && ['owner', 'admin', 'employee'].includes(userProfile.role);
   const isAdmin = isOwnerByEmail || hasAdminRole;
@@ -96,32 +87,6 @@ export function AppSidebar() {
         title: t.logoutFailTitle,
         description: t.logoutFailDescription,
       });
-    }
-  };
-
-  const handleAvatarSelect = async (newAvatarUrl: string) => {
-    if (!user) {
-      toast({ variant: 'destructive', title: t.avatarUpdatedFail });
-      return;
-    }
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .upsert({
-          id: user.id,
-          email: user.email,
-          display_name: userProfile?.display_name || user.email,
-          avatar_url: newAvatarUrl,
-          ...(user.email === 'hawadettt@gmail.com' ? { role: 'owner' } : {}),
-        }, { onConflict: 'id' });
-
-      if (error) throw error;
-
-      toast({ title: t.avatarUpdatedSuccess });
-      setIsAvatarDialogOpen(false);
-    } catch (error) {
-      console.error("Avatar update failed:", error);
-      toast({ variant: 'destructive', title: t.avatarUpdatedFail });
     }
   };
 
@@ -174,21 +139,19 @@ export function AppSidebar() {
                 <Skeleton className="h-3 w-28" />
                 </div>
             </div>
-            ) : user ? (
-            <div className="flex items-center gap-3 rounded-md p-2">
-                <button onClick={() => setIsAvatarDialogOpen(true)} className="rounded-full ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-                  <Avatar className="h-10 w-10 border-2 border-sidebar-accent">
-                    <AvatarImage src={userProfile?.avatar_url || user?.user_metadata?.avatar_url || userAvatar?.imageUrl} />
-                    <AvatarFallback>{userProfile?.display_name?.[0]?.toUpperCase() ?? user?.email?.[0]?.toUpperCase() ?? 'U'}</AvatarFallback>
-                  </Avatar>
-                </button>
-                <Link href="/settings" className="flex-grow overflow-hidden">
-                    <div className="flex flex-col justify-center h-full">
-                       <p className="truncate text-sm font-semibold text-sidebar-foreground">{getRoleDisplay()}</p>
-                    </div>
-                </Link>
-                <LogOut onClick={handleLogout} className="ms-auto h-5 w-5 flex-shrink-0 cursor-pointer text-muted-foreground hover:text-foreground" />
-            </div>
+) : user ? (
+             <div className="flex items-center gap-3 rounded-md p-2">
+                     <Avatar className="h-10 w-10 border-2 border-sidebar-accent">
+                       <AvatarImage src={userProfile?.avatar_url || user?.user_metadata?.avatar_url} />
+                       <AvatarFallback>{userProfile?.display_name?.[0]?.toUpperCase() ?? user?.email?.[0]?.toUpperCase() ?? 'U'}</AvatarFallback>
+                     </Avatar>
+                 <Link href="/settings" className="flex-grow overflow-hidden">
+                     <div className="flex flex-col justify-center h-full">
+                        <p className="truncate text-sm font-semibold text-sidebar-foreground">{getRoleDisplay()}</p>
+                     </div>
+                 </Link>
+                 <LogOut onClick={handleLogout} className="ms-auto h-5 w-5 flex-shrink-0 cursor-pointer text-muted-foreground hover:text-foreground" />
+             </div>
             ) : (
             <div className="px-2 py-2">
                 <Link href="/login" passHref>
@@ -228,14 +191,7 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
-            <SidebarMenuItem>
-              <Link href="/predictive-analytics">
-                <SidebarMenuButton isActive={pathname === '/predictive-analytics'} size="sm">
-                  <Brain />
-                  <span>{t.sidebarPredictiveAnalytics}</span>
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
+            
         </SidebarMenu>
 
         {(user && !isUserLoading && isProfileLoading && !isOwnerByEmail) && (
@@ -347,68 +303,17 @@ export function AppSidebar() {
                             </SidebarMenuButton>
                           </Link>
                         </SidebarMenuItem>
-                        <SidebarMenuItem>
-                          <Link href="/suppliers/whitelist">
-                            <SidebarMenuButton isActive={pathname === '/suppliers/whitelist'} size="sm">
-                              <BadgeCheck />
-                              <span>{t.sidebarNfsaWhitelist}</span>
-                            </SidebarMenuButton>
-                          </Link>
-                        </SidebarMenuItem>
+                        
                       </SidebarMenu>
                     </CollapsibleContent>
                   </Collapsible>
                 </SidebarMenuItem>
 
                 <SidebarMenuItem>
-                  <Collapsible defaultOpen={pathname.startsWith('/important-sites')}>
-                    <CollapsibleTrigger asChild>
-                      <SidebarMenuButton
-                          isActive={pathname.startsWith('/important-sites')}
-                          size="sm"
-                      >
-                        <Globe />
-                        <span>{t.sidebarImportantSites}</span>
-                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                      </SidebarMenuButton>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <SidebarMenu>
-                        <SidebarMenuItem>
-                          <Link href="/important-sites">
-                            <SidebarMenuButton isActive={pathname === '/important-sites'} size="sm">
-                              <span>{t.sidebarSitesDashboard}</span>
-                            </SidebarMenuButton>
-                          </Link>
-                        </SidebarMenuItem>
-                        {tradeKnowledgeCategories.map((category) => (
-                          <SidebarMenuItem key={category.slug}>
-                            <Link href={`/important-sites/${category.slug}`}>
-                              <SidebarMenuButton isActive={pathname === `/important-sites/${category.slug}`} size="sm">
-                                <span>{language === 'ar' ? category.name : category.nameEn}</span>
-                                <span className="ms-auto text-xs text-muted-foreground">{category.count}</span>
-                              </SidebarMenuButton>
-                            </Link>
-                          </SidebarMenuItem>
-                        ))}
-                      </SidebarMenu>
-                    </CollapsibleContent>
-                  </Collapsible>
-                </SidebarMenuItem>
-                {/* Admin Dashboard Link - Only for owners and admins */}
-                <SidebarMenuItem>
                   <Link href="/dashboard/admin">
                     <SidebarMenuButton isActive={pathname === '/dashboard/admin'} size="sm">
                       <Shield />
                       <span>{t.sidebarAdminDashboard}</span>
-                    </SidebarMenuButton>
-                  </Link>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <Link href="/settings">
-                    <SidebarMenuButton isActive={pathname === '/settings'} size="sm">
-                      <Settings />
-                      <span>{t.sidebarSettings}</span>
                     </SidebarMenuButton>
                   </Link>
                 </SidebarMenuItem>
@@ -435,12 +340,6 @@ export function AppSidebar() {
         </div>
       </SidebarFooter>
     </Sidebar>
-
-    <EditAvatarDialog
-        isOpen={isAvatarDialogOpen}
-        onOpenChange={setIsAvatarDialogOpen}
-        onAvatarSelect={handleAvatarSelect}
-    />
     </>
   );
 }

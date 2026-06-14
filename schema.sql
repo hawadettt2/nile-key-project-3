@@ -18,6 +18,7 @@ DO $$ BEGIN
       'supplier',    -- المورد (يرى عروضه فقط)
       'agent'        -- الوكيل (صلاحيات محددة للأسواق)
     );
+    );
   END IF;
 END $$;
 
@@ -717,13 +718,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Trigger for new user creation
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-
--- Function to log audit events (SECURITY DEFINER)
+-- =====================================================
+-- GRANT PERMISSIONS
+-- =====================================================
 CREATE OR REPLACE FUNCTION public.log_audit_event(
   action TEXT,
   table_name TEXT,

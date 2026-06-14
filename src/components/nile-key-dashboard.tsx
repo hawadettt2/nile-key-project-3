@@ -6,15 +6,13 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, Package, AlertTriangle, Truck, DollarSign, CheckCircle, Bot, Languages, FileText, TrendingUp, ShieldCheck } from "lucide-react";
+import { Loader2, Package, AlertTriangle, Truck, FileText, TrendingUp, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSupabase } from "@/supabase/provider";
 import { supabase } from "@/supabase/client";
 import { useCollection } from "@/supabase/hooks/use-collection";
 import { Textarea } from "@/components/ui/textarea";
 import { useLanguage } from "@/context/language-provider";
-import { useAIChat } from "@/ai/hooks/use-ai-chat";
-import { getTradeKnowledgeStats } from "@/lib/trade-intelligence";
 
 export default function NileKeyDashboard() {
   const { language, t } = useLanguage();
@@ -33,12 +31,6 @@ export default function NileKeyDashboard() {
   const [isTranslating, setIsTranslating] = useState(false);
   const [translationInput, setTranslationInput] = useState("");
   const [translatedText, setTranslatedText] = useState("");
-  
-  const { messages, input, handleInputChange, handleSubmit: handleChatSubmit, isLoading: isChatLoading } = useAIChat({
-    systemPrompt: language === 'ar' 
-      ? 'أنت مساعد ذكي لشركة مفتاح النيل. ساعد في إنشاء العقود وترجمة المراسلات.'
-      : 'You are a helpful AI assistant for Nile Key company. Help with contracts and translations.'
-  });
 
   const { data: shipments, isLoading: isLoadingShipments } = useCollection<Shipment>(
     supabase,
@@ -80,59 +72,24 @@ export default function NileKeyDashboard() {
     'desc'
   );
 
-  const tradeStats = getTradeKnowledgeStats();
-
   const stats = useMemo(() => {
     if (!shipments) return { totalShipments: 0, totalValue: 0, inTransit: 0, completed: 0 };
     const totalValue = shipments.reduce((sum, s) => sum + (s.price || 0), 0);
-    const inTransit = shipments.filter(s => s.status === t.shipmentStatusOption4).length;
-    const completed = shipments.filter(s => s.status === t.shipmentStatusOption5).length;
+    const inTransit = shipments.filter(s => s.status === 'in_transit').length;
+    const completed = shipments.filter(s => s.status === 'completed').length;
     return { totalShipments: shipments.length, totalValue, inTransit, completed };
-  }, [shipments, t]);
+  }, [shipments]);
 
   const totalCustomers = customersData?.length ?? 0;
   const openTasks = tasksData?.filter(t => t.status === 'pending' || t.status === 'in_progress').length ?? 0;
   const totalAlerts = alertsData?.length ?? 0;
   const exportOpportunities = opportunitiesData?.length ?? 0;
-  const verifiedSources = tradeStats.highCredibilityCount;
-
-  const generateVerifiedAiText = async (systemPrompt: string, prompt: string) => {
-    const response = await fetch('/api/ai', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: prompt },
-        ],
-        system: systemPrompt,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`AI request failed: ${response.status}`);
-    }
-
-    return await response.text();
-  };
 
   const handleGenerateContract = async () => {
     setIsGeneratingContract(true);
     setContractText("");
     try {
-      const systemPrompt = language === 'ar'
-        ? 'أنت مساعد صياغة عقود لشركة مفتاح النيل. لا تخترع أسعارًا أو تواريخ أو بنودًا قانونية غير موجودة. أنشئ مسودة قابلة للتعبئة فقط، واستخدم [حقول قابلة للتعبئة] عند غياب البيانات.'
-        : 'You are a contract drafting assistant for Nile Key. Do not invent prices, dates, or legal clauses that are not provided. Create a fillable draft only, and use [fillable fields] whenever data is missing.';
-
-      const contractPrompt = language === 'ar'
-        ? 'أنشئ مسودة عقد تصدير احترافية قابلة للتعبئة لشركة مفتاح النيل. يجب أن تتضمن: بيانات الأطراف، البضاعة، شروط التسليم، المستندات المطلوبة، الدفع، القوة القاهرة، والتحكيم. لا تخترع أي قيم رقمية أو أسماء أطراف غير معروفة.'
-        : 'Create a professional fillable export contract draft for Nile Key. Include: parties, goods, delivery terms, required documents, payment, force majeure, and arbitration. Do not invent any numeric values or unknown party names.';
-
-      const draft = await generateVerifiedAiText(systemPrompt, contractPrompt);
-      setContractText(draft.trim() || (language === 'ar' ? 'تعذر توليد مسودة موثقة.' : 'Could not generate a verified draft.'));
-    } catch (error) {
-      console.error("Failed to generate contract:", error);
-      toast({ variant: "destructive", title: t.generateContractFailTitle, description: t.generateContractFailDescription });
+      setContractText(language === 'ar' ? '[مسودة العقد غير متاحة - سيتم إضافتها لاحقاً]' : '[Contract draft not available - will be added later]');
     } finally {
       setIsGeneratingContract(false);
     }
@@ -143,19 +100,7 @@ export default function NileKeyDashboard() {
     setIsTranslating(true);
     setTranslatedText("");
     try {
-      const systemPrompt = language === 'ar'
-        ? 'أنت مترجم دبلوماسي داخلي لشركة مفتاح النيل. ترجِم النص فقط دون إضافة أو حذف معانٍ أو معلومات.'
-        : 'You are an internal diplomatic translator for Nile Key. Translate only, without adding or removing meaning or information.';
-
-      const translatePrompt = language === 'ar'
-        ? `ترجم النص التالي إلى الإنجليزية بصياغة دبلوماسية دقيقة دون إضافة أي معلومات: ${translationInput}`
-        : `Translate the following text to Arabic in precise diplomatic wording without adding any information: ${translationInput}`;
-
-      const translated = await generateVerifiedAiText(systemPrompt, translatePrompt);
-      setTranslatedText(translated.trim() || (language === 'ar' ? 'تعذر الترجمة الموثقة.' : 'Could not generate a verified translation.'));
-    } catch (error) {
-      console.error("Failed to translate:", error);
-      toast({ variant: "destructive", title: t.translateFailTitle, description: t.translateFailDescription });
+      setTranslatedText(language === 'ar' ? '[الترجمة غير متاحة - سيتم إضافتها لاحقاً]' : '[Translation not available - will be added later]');
     } finally {
       setIsTranslating(false);
     }
@@ -172,132 +117,63 @@ export default function NileKeyDashboard() {
               <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
             ) : user ? (
               <div className="flex flex-col gap-6">
-<div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
-                   <Card>
-                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                       <CardTitle className="text-sm font-medium">{language === 'ar' ? 'العملاء' : 'Customers'}</CardTitle>
-                       <Package className="h-4 w-4 text-muted-foreground" />
-                     </CardHeader>
-                     <CardContent>
-                       <div className="text-2xl font-bold">{isLoadingCustomers ? <Loader2 className="h-8 w-16 animate-spin" /> : totalCustomers}</div>
-                     </CardContent>
-                   </Card>
-                   <Card>
-                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                       <CardTitle className="text-sm font-medium">{t.statsTotalShipments}</CardTitle>
-                       <Truck className="h-4 w-4 text-muted-foreground" />
-                     </CardHeader>
-                     <CardContent>
-                       <div className="text-2xl font-bold">{isLoadingShipments ? <Loader2 className="h-8 w-16 animate-spin" /> : stats.totalShipments}</div>
-                     </CardContent>
-                   </Card>
-                   <Card>
-                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                       <CardTitle className="text-sm font-medium">{language === 'ar' ? 'المهام المفتوحة' : 'Open Tasks'}</CardTitle>
-                       <FileText className="h-4 w-4 text-muted-foreground" />
-                     </CardHeader>
-                     <CardContent>
-                       <div className="text-2xl font-bold">{isLoadingTasks ? <Loader2 className="h-8 w-16 animate-spin" /> : openTasks}</div>
-                     </CardContent>
-                   </Card>
-                   <Card>
-                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                       <CardTitle className="text-sm font-medium">{language === 'ar' ? 'التنبيهات' : 'Alerts'}</CardTitle>
-                       <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-                     </CardHeader>
-                     <CardContent>
-                       <div className="text-2xl font-bold">{isLoadingAlerts ? <Loader2 className="h-8 w-16 animate-spin" /> : totalAlerts}</div>
-                     </CardContent>
-                   </Card>
-                   <Card>
-                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                       <CardTitle className="text-sm font-medium">{language === 'ar' ? 'فرص التصدير' : 'Opportunities'}</CardTitle>
-                       <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                     </CardHeader>
-                     <CardContent>
-                       <div className="text-2xl font-bold">{isLoadingOpportunities ? <Loader2 className="h-8 w-16 animate-spin" /> : exportOpportunities}</div>
-                     </CardContent>
-                   </Card>
-                   <Card>
-                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                       <CardTitle className="text-sm font-medium">{language === 'ar' ? 'مصادر موثقة' : 'Verified Sources'}</CardTitle>
-                       <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-                     </CardHeader>
-                     <CardContent>
-                       <div className="text-2xl font-bold">{tradeStats.totalSites}</div>
-                     </CardContent>
-                   </Card>
-                 </div>
+                <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">{language === 'ar' ? 'العملاء' : 'Customers'}</CardTitle>
+                      <Package className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{isLoadingCustomers ? <Loader2 className="h-8 w-16 animate-spin" /> : totalCustomers}</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">{t.statsTotalShipments}</CardTitle>
+                      <Truck className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{isLoadingShipments ? <Loader2 className="h-8 w-16 animate-spin" /> : stats.totalShipments}</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">{language === 'ar' ? 'المهام المفتوحة' : 'Open Tasks'}</CardTitle>
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{isLoadingTasks ? <Loader2 className="h-8 w-16 animate-spin" /> : openTasks}</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">{language === 'ar' ? 'التنبيهات' : 'Alerts'}</CardTitle>
+                      <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{isLoadingAlerts ? <Loader2 className="h-8 w-16 animate-spin" /> : totalAlerts}</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">{language === 'ar' ? 'فرص التصدير' : 'Opportunities'}</CardTitle>
+                      <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{isLoadingOpportunities ? <Loader2 className="h-8 w-16 animate-spin" /> : exportOpportunities}</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">{language === 'ar' ? 'مصادر موثقة' : 'Verified Sources'}</CardTitle>
+                      <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">0</div>
+                    </CardContent>
+                  </Card>
+                </div>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="font-headline flex items-center gap-2">
-                      <Bot className="h-6 w-6" />
-                      {t.aiLabTitle}
-                    </CardTitle>
-                    <CardDescription>{t.aiLabDescription}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2">{t.contractGeneratorTitle}</h3>
-                      <p className="text-sm text-muted-foreground mb-4">{t.contractGeneratorDescription}</p>
-                      <Button onClick={handleGenerateContract} disabled={isGeneratingContract}>
-                        {isGeneratingContract && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {t.contractGeneratorButton}
-                      </Button>
-                      {contractText && (
-                        <div className="mt-4 p-4 bg-muted rounded-lg">
-                          <pre className="whitespace-pre-wrap text-sm">{contractText}</pre>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="border-t pt-4">
-                      <h3 className="text-lg font-semibold mb-2">{t.diplomaticTranslatorTitle}</h3>
-                      <p className="text-sm text-muted-foreground mb-4">{t.diplomaticTranslatorDescription}</p>
-                      <Textarea 
-                        placeholder={t.translatorInputPlaceholder}
-                        value={translationInput}
-                        onChange={(e) => setTranslationInput(e.target.value)}
-                        className="mb-2"
-                      />
-                      <Button onClick={handleTranslate} disabled={isTranslating}>
-                        {isTranslating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {t.translatorButton}
-                      </Button>
-                      {translatedText && (
-                        <div className="mt-4 p-4 bg-muted rounded-lg">
-                          <p className="text-sm">{translatedText}</p>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="border-t pt-4">
-                      <h3 className="text-lg font-semibold mb-2">AI Chat</h3>
-                      <div className="space-y-4">
-                        <div className="h-64 overflow-y-auto border rounded-lg p-4 space-y-2">
-                          {messages.map((m, i) => (
-                            <div key={i} className={`p-2 rounded-lg ${m.role === 'user' ? 'bg-primary/10 ml-auto' : 'bg-muted'} max-w-[80%] ${m.role === 'user' ? 'ml-auto' : 'mr-auto'}`}>
-                              <p className="text-sm">{m.content}</p>
-                            </div>
-                          ))}
-                          {isChatLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                        </div>
-                        <form onSubmit={handleChatSubmit} className="flex gap-2">
-                          <Textarea 
-                            value={input}
-                            onChange={handleInputChange}
-                            placeholder={language === 'ar' ? 'اسأل عن عقد أو ترجمة' : 'Ask for a contract draft or translation...'}
-                            className="flex-1"
-                          />
-                          <Button type="submit" disabled={isChatLoading}>
-                            {isChatLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (language === 'ar' ? 'إرسال' : 'Send')}
-                          </Button>
-                        </form>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
               </div>
             ) : (
               <div className="flex h-full items-center justify-center">

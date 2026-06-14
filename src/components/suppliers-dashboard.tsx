@@ -137,52 +137,7 @@ export function SuppliersDashboard() {
         </CardContent>
       </Card>
       
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-headline flex items-center gap-2">
-            <Search className="h-6 w-6" /> {t.aiSupplierSearchTitle}
-          </CardTitle>
-          <CardDescription>{t.aiSupplierSearchDescription}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-            <div className="flex gap-2">
-              <Input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={language === 'ar' ? 'ابحث في الموردين الموثقين...' : 'Search verified suppliers...'}
-              />
-              <Button onClick={handleSearch} disabled={isSearching}>
-                {isSearching ? <Loader2 className="mx-2 h-4 w-4 animate-spin" /> : <Search className="mx-2 h-4 w-4" />}
-                {t.aiSearchButton}
-              </Button>
-            </div>
 
-            {(isSearching || searchResults) && (
-            <div className="rounded-md border bg-background p-4">
-              <h4 className="mb-2 font-semibold text-foreground">{t.resultsTitle}</h4>
-              {isSearching ? (
-                <div className="flex items-center justify-center p-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <p className="mx-4 text-muted-foreground">Searching verified records...</p>
-                </div>
-              ) : searchResults && searchResults.suppliers && searchResults.suppliers.length > 0 ? (
-                <div className="space-y-4">
-                  {searchResults.suppliers.map((supplier: any, index: number) => (
-                    <div key={index} className="rounded-md border p-4">
-                      <h5 className="font-bold">{supplier.name}</h5>
-                      <p className="text-sm text-muted-foreground">{t.tableHeaderActivity}: {supplier.activity}</p>
-                      <p className="text-sm text-muted-foreground">{t.tableHeaderAddress}: {supplier.address}</p>
-                      <p className="text-sm text-muted-foreground">{t.tableHeaderContact}: {supplier.phone}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">{t.aiNoResults}</p>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }

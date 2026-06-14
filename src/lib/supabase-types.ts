@@ -52,9 +52,7 @@ export type SiteCategory = Database['public']['Tables']['site_categories']['Row'
 export type SiteCategoryInsert = Database['public']['Tables']['site_categories']['Insert'];
 export type SiteCategoryUpdate = Database['public']['Tables']['site_categories']['Update'];
 
-export type NfsaWhitelist = Database['public']['Tables']['nfsa_whitelist']['Row'];
-export type NfsaWhitelistInsert = Database['public']['Tables']['nfsa_whitelist']['Insert'];
-export type NfsaWhitelistUpdate = Database['public']['Tables']['nfsa_whitelist']['Update'];
+
 
 // ==========================================
 // NEW EXPORT PLATFORM TYPES
@@ -89,9 +87,7 @@ export type ExportAlertUpdate = Database['public']['Tables']['export_alerts']['U
 // ANALYTICS & LOGGING
 // ==========================================
 
-export type PredictiveAnalytics = Database['public']['Tables']['predictive_analytics']['Row'];
-export type PredictiveAnalyticsInsert = Database['public']['Tables']['predictive_analytics']['Insert'];
-export type PredictiveAnalyticsUpdate = Database['public']['Tables']['predictive_analytics']['Update'];
+
 
 export type AuditLog = Database['public']['Tables']['audit_logs']['Row'];
 export type AuditLogInsert = Database['public']['Tables']['audit_logs']['Insert'];
@@ -143,34 +139,4 @@ export interface PaginatedResponse<T> extends ApiResponse {
   totalPages: number;
 }
 
-// ==========================================
-// AI & ANALYTICS RESPONSE TYPES
-// ==========================================
 
-export interface OpportunityDiscoveryResult {
-  opportunities: ExportOpportunity[];
-  totalFound: number;
-  confidence: number;
-  generatedAt: string;
-}
-
-export interface SupplierAnalysisResult {
-  supplierId: string;
-  supplierName: string;
-  averageRating: number;
-  ratingCount: number;
-  strengths: string[];
-  weaknesses: string[];
-  recommendations: string[];
-}
-
-export interface MarketAnalysisResult {
-  country: string;
-  product: string;
-  hsCode: string;
-  marketSize: number;
-  demandTrend: DemandTrend;
-  competitionLevel: CompetitionLevel;
-  estimatedMargin: number;
-  entryBarriers: string[];
-}
