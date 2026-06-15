@@ -536,7 +536,6 @@ export const translations = {
     addShipmentButton: 'إضافة شحنة',
 
     resultsTitle: 'النتائج:',
-,
     translatorInputPlaceholder: 'أدخل النص للترجمة...',
     translatorButton: 'ترجمة',
     loginRequiredTitle: 'الرجاء تسجيل الدخول',

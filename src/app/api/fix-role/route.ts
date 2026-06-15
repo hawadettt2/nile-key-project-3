@@ -19,8 +19,8 @@ export async function GET(request: NextRequest) {
     if (profileErr) throw profileErr;
 
     // Also update user_metadata.role in auth.users via admin API
-    const updateMetaPromises = ownerEmails.map(email =>
-      supabase.auth.admin.updateUserByEmail(email, {
+    const updateMetaPromises = updatedProfiles.map(profile =>
+      supabase.auth.admin.updateUserById(profile.id, {
         user_metadata: { role: 'owner' }
       })
     );
