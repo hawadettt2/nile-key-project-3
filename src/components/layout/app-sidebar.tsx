@@ -70,7 +70,7 @@ export function AppSidebar() {
   );
   
   // Updated to use new role system
-  const hasAdminRole = userProfile?.role && ['owner', 'admin', 'employee'].includes(userProfile.role);
+  const hasAdminRole = userProfile?.role && ['مالك', 'إشراف إداري', 'موظف'].includes(userProfile.role);
   const isAdmin = isOwnerByEmail || hasAdminRole;
 
   const handleLogout = async () => {
@@ -92,21 +92,22 @@ export function AppSidebar() {
 
   const getRoleDisplay = (): string => {
     if (isOwnerByEmail) {
-      return 'Company Owner';
+      return 'مالك';
     }
     if (userProfile?.role) {
-      // Simple mapping for role display
       const roleMap: Record<string, string> = {
-        'owner': 'Owner',
-        'admin': 'Admin',
-        'employee': 'Employee',
-        'importer': 'Importer',
-        'supplier': 'Supplier',
-        'agent': 'Agent',
+        'مالك': 'مالك',
+        'إشراف إداري': 'إشراف إداري',
+        'موظف': 'موظف',
+        'مستورد': 'مستورد',
+        'مورد': 'مورد',
+        'مصدر': 'مصدر',
+        'مستخدم مسجل': 'مستخدم مسجل',
+        'زائر': 'زائر',
       };
       return roleMap[userProfile.role] || userProfile.role;
     }
-    return 'User';
+    return 'مستخدم';
   };
 
   return (
@@ -314,6 +315,14 @@ export function AppSidebar() {
                     <SidebarMenuButton isActive={pathname === '/dashboard/admin'} size="sm">
                       <Shield />
                       <span>{t.sidebarAdminDashboard}</span>
+                    </SidebarMenuButton>
+                  </Link>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <Link href="/admin/role-requests">
+                    <SidebarMenuButton isActive={pathname === '/admin/role-requests'} size="sm">
+                      <Shield />
+                      <span>طلبات الأدوار</span>
                     </SidebarMenuButton>
                   </Link>
                 </SidebarMenuItem>

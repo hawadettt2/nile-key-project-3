@@ -3,10 +3,14 @@
 import React, { createContext, useContext, useState, ReactNode, useMemo, useEffect } from 'react';
 import { translations } from '@/lib/i18n';
 
+interface TranslationDictionary {
+  [key: string]: string;
+}
+
 interface LanguageContextType {
   language: string;
   setLanguage: (language: string) => void;
-  t: typeof translations.en | typeof translations.ar;
+  t: TranslationDictionary;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);

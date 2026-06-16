@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     // Force update to owner
     const { data, error } = await adminSupabase
       .from('profiles')
-      .update({ role: 'owner', status: 'active', email_verified: true })
+      .update({ role: 'مالك', status: 'active', email_verified: true })
       .eq('email', 'hawadettt2@gmail.com')
       .select();
 
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ 
       success: true, 
-      message: 'Role updated to owner', 
+      message: 'تم تحديث الدور إلى مالك',
       data 
     });
   } catch (error: any) {

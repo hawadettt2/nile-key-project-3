@@ -27,13 +27,13 @@ export async function GET(request: NextRequest) {
       // Update to owner if not already
       const { error: updateErr } = await adminSupabase
         .from('profiles')
-        .update({ role: 'owner', status: 'active', email_verified: true })
+        .update({ role: 'مالك', status: 'active', email_verified: true })
         .eq('email', 'hawadettt2@gmail.com');
 
       if (updateErr) {
         return NextResponse.json({ error: updateErr.message }, { status: 500 });
       }
-      return NextResponse.json({ success: true, message: 'Owner role confirmed', userId: profile.id });
+      return NextResponse.json({ success: true,       message: 'تم تأكيد دور المالك', userId: profile.id });
     }
 
     // Profile doesn't exist - create via admin auth
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
       email: 'hawadettt2@gmail.com',
       password: '123456',
       email_confirm: true,
-      user_metadata: { display_name: 'Owner', role: 'owner' },
+      user_metadata: { display_name: 'مالك', role: 'مالك' },
     });
 
     if (createErr) {
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     const { error: profileErr } = await adminSupabase.from('profiles').insert({
       id: newUser.user?.id,
       email: 'hawadettt2@gmail.com',
-      role: 'owner',
+      role: 'مالك',
       status: 'active',
       email_verified: true,
     });

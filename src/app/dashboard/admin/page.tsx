@@ -100,8 +100,9 @@ export default function AdminDashboard() {
 
   const getRoleBadgeVariant = (role: UserRole): 'default' | 'secondary' | 'destructive' | 'outline' => {
     switch (role) {
-      case 'owner': return 'default';
-      case 'admin': return 'secondary';
+      case 'مالك': return 'default';
+      case 'إشراف إداري': return 'secondary';
+      case 'موظف': return 'outline';
       default: return 'outline';
     }
   };
@@ -167,12 +168,14 @@ export default function AdminDashboard() {
                           disabled={isUpdating === userProfile.id}
                           className="rounded border bg-background px-2 py-1"
                         >
-                          <option value="owner">Owner</option>
-                          <option value="admin">Admin</option>
-                          <option value="employee">Employee</option>
-                          <option value="importer">Importer</option>
-                          <option value="supplier">Supplier</option>
-                          <option value="agent">Agent</option>
+                          <option value="مالك">مالك</option>
+                          <option value="إشراف إداري">إشراف إداري</option>
+                          <option value="موظف">موظف</option>
+                          <option value="مستورد">مستورد</option>
+                          <option value="مورد">مورد</option>
+                          <option value="مصدر">مصدر</option>
+                          <option value="مستخدم مسجل">مستخدم مسجل</option>
+                          <option value="زائر">زائر</option>
                         </select>
                         <div className="mt-2"><Badge variant={getRoleBadgeVariant(userProfile.role)}>{userProfile.role}</Badge></div>
                       </TableCell>

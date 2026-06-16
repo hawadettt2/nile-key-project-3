@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     // Update role in profiles table
     const { data: updatedProfiles, error: profileErr } = await supabase
       .from('profiles')
-      .update({ role: 'owner', status: 'active', email_verified: true })
+      .update({ role: 'مالك', status: 'active', email_verified: true })
       .in('email', ownerEmails)
       .select('id, email, role');
 
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     // Also update user_metadata.role in auth.users via admin API
     const updateMetaPromises = updatedProfiles.map(profile =>
       supabase.auth.admin.updateUserById(profile.id, {
-        user_metadata: { role: 'owner' }
+        user_metadata: { role: 'مالك' }
       })
     );
     const metaResults = await Promise.allSettled(updateMetaPromises);
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Owner roles updated in profiles and user_metadata',
+      message: 'تم تحديث أدوار المالك في profiles و user_metadata',
       updatedProfiles,
       metaResults: metaResults.map(r => 
         r.status === 'fulfilled' ? { success: true } : { error: String((r as any).reason) }

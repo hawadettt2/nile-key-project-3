@@ -4,22 +4,23 @@ import type { UserRole } from './supabase-types';
 export const COMPANY_NAME = 'مفتاح النيل';
 
 export const ACTIVE_ROLES: UserRole[] = [
-  'owner',
-  'admin',
-  'employee',
-  'importer',
-  'supplier',
-  'agent',
+  'مالك',
+  'إشراف إداري',
+  'موظف',
+  'مستورد',
+  'مورد',
+  'مصدر',
 ];
 
 const ROUTE_RULES: Array<{ pattern: RegExp; roles: UserRole[] }> = [
-  { pattern: /^\/dashboard\/admin(\/|$)/, roles: ['owner', 'admin'] },
-  { pattern: /^\/dashboard\/employee(\/|$)/, roles: ['owner', 'admin', 'employee'] },
-  { pattern: /^\/dashboard\/agent(\/|$)/, roles: ['owner', 'admin', 'agent'] },
-  { pattern: /^\/customers(\/|$)/, roles: ['owner', 'admin', 'employee', 'importer'] },
-  { pattern: /^\/suppliers(\/|$)/, roles: ['owner', 'admin', 'employee', 'supplier'] },
-  { pattern: /^\/shipments(\/|$)/, roles: ['owner', 'admin', 'employee', 'importer', 'agent'] },
-  { pattern: /^\/predictive-analytics(\/|$)/, roles: ['owner', 'admin', 'employee'] },
+  { pattern: /^\/dashboard\/admin(\/|$)/, roles: ['مالك', 'إشراف إداري'] },
+  { pattern: /^\/admin\/role-requests(\/|$)/, roles: ['مالك', 'إشراف إداري'] },
+  { pattern: /^\/dashboard\/employee(\/|$)/, roles: ['مالك', 'إشراف إداري', 'موظف'] },
+  { pattern: /^\/dashboard\/agent(\/|$)/, roles: ['مالك', 'إشراف إداري', 'مصدر'] },
+  { pattern: /^\/customers(\/|$)/, roles: ['مالك', 'إشراف إداري', 'موظف', 'مستورد'] },
+  { pattern: /^\/suppliers(\/|$)/, roles: ['مالك', 'إشراف إداري', 'موظف', 'مورد'] },
+  { pattern: /^\/shipments(\/|$)/, roles: ['مالك', 'إشراف إداري', 'موظف', 'مستورد', 'مصدر'] },
+  { pattern: /^\/predictive-analytics(\/|$)/, roles: ['مالك', 'إشراف إداري', 'موظف'] },
   { pattern: /^\/settings(\/|$)/, roles: ACTIVE_ROLES },
 ];
 
@@ -51,9 +52,9 @@ export function normalizeRole(role: unknown): UserRole | null {
 }
 
 export function canManageUsers(actorRole: UserRole | null | undefined): boolean {
-  return actorRole === 'owner' || actorRole === 'admin';
+  return actorRole === 'مالك' || actorRole === 'إشراف إداري';
 }
 
 export function canEditCompanyContent(actorRole: UserRole | null | undefined): boolean {
-  return actorRole === 'owner' || actorRole === 'admin' || actorRole === 'employee';
+  return actorRole === 'مالك' || actorRole === 'إشراف إداري' || actorRole === 'موظف';
 }

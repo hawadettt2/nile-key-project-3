@@ -6,7 +6,7 @@ import type { Database } from './database.types';
 // ENUMS
 // ==========================================
 
-export type UserRole = Database['public']['Enums']['user_role'];
+export type UserRole = 'مالك' | 'إشراف إداري' | 'موظف' | 'مستورد' | 'مورد' | 'مصدر' | 'مستخدم مسجل' | 'زائر';
 export type UserStatus = 'active' | 'suspended' | 'rejected';
 export type TaskStatus = Database['public']['Enums']['task_status'];
 export type OpportunityStatus = Database['public']['Enums']['opportunity_status'];

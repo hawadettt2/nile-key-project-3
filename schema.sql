@@ -11,12 +11,14 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role' AND typnamespace = 'public'::regnamespace) THEN
     CREATE TYPE public.user_role AS ENUM (
-      'owner',       -- المالك (كامل الصلاحيات)
-      'admin',       -- المدير (إدارة المستخدمين والنظام)
-      'employee',    -- الموظف (محدود حسب المسؤوليات)
-      'importer',    -- المستورد (يرى طلباته فقط)
-      'supplier',    -- المورد (يرى عروضه فقط)
-      'agent'        -- الوكيل (صلاحيات محددة للأسواق)
+      'مالك',       -- المالك (كامل الصلاحيات)
+      'إشراف إداري', -- المدير (إدارة المستخدمين والنظام)
+      'موظف',    -- الموظف (محدود حسب المسؤوليات)
+      'مستورد',    -- المستورد (يرى طلباته فقط)
+      'مورد',    -- المورد (يرى عروضه فقط)
+      'مصدر',        -- المصدر (صلاحيات محددة للأسواق)
+      'مستخدم مسجل',
+      'زائر'
     );
   END IF;
 END $$;
@@ -92,7 +94,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   gps_location TEXT,
   
   -- Role-Based Access Control (RBAC)
-  role public.user_role DEFAULT 'importer',
+  role public.user_role DEFAULT 'مستخدم مسجل',
   permissions JSONB DEFAULT '{}'::jsonb,
   entity_id UUID,
   
@@ -118,6 +120,35 @@ CREATE INDEX IF NOT EXISTS idx_profiles_role ON public.profiles(role);
 CREATE INDEX IF NOT EXISTS idx_profiles_status ON public.profiles(status);
 CREATE INDEX IF NOT EXISTS idx_profiles_entity_id ON public.profiles(entity_id);
 CREATE INDEX IF NOT EXISTS idx_profiles_email_verified ON public.profiles(email_verified);
+
+-- =====================================================
+-- 5.1 ROLE MANAGEMENT TABLES
+-- =====================================================
+CREATE TABLE IF NOT EXISTS public.role_change_requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  profile_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  requested_role public.user_role NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  reason TEXT,
+  reviewer_id UUID REFERENCES public.profiles(id),
+  reviewed_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.user_roles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  profile_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  role public.user_role NOT NULL,
+  assigned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  is_current BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_role_change_requests_profile_id ON public.role_change_requests(profile_id);
+CREATE INDEX IF NOT EXISTS idx_role_change_requests_status ON public.role_change_requests(status);
+CREATE INDEX IF NOT EXISTS idx_user_roles_profile_id ON public.user_roles(profile_id);
+CREATE INDEX IF NOT EXISTS idx_user_roles_current ON public.user_roles(profile_id, is_current);
 
 -- =====================================================
 -- 5. AUDIT LOGS TABLE (Read-Only, Immutable)
@@ -434,7 +465,7 @@ CREATE POLICY "Admins can view all profiles"
     EXISTS (
       SELECT 1 FROM public.profiles 
       WHERE id = auth.uid() 
-      AND role IN ('owner', 'admin', 'employee')
+      AND role IN ('مالك', 'إشراف إداري', 'موظف')
     )
   );
 
@@ -444,10 +475,46 @@ CREATE POLICY "Admins can update all profiles"
     EXISTS (
       SELECT 1 FROM public.profiles 
       WHERE id = auth.uid() 
-      AND role IN ('owner', 'admin')
+      AND role IN ('مالك', 'إشراف إداري')
     )
   )
   WITH CHECK (true); -- Allow owners/admins to update any field including role
+
+-- =====================================================
+-- ROLE CHANGE REQUESTS AND ROLE HISTORY POLICIES
+-- =====================================================
+
+ALTER TABLE public.role_change_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "users can insert own request" ON public.role_change_requests;
+DROP POLICY IF EXISTS "users can view own requests" ON public.role_change_requests;
+DROP POLICY IF EXISTS "owner/admin can view all requests" ON public.role_change_requests;
+DROP POLICY IF EXISTS "owner/admin can update status" ON public.role_change_requests;
+DROP POLICY IF EXISTS "owner/admin can view all role history" ON public.user_roles;
+DROP POLICY IF EXISTS "owner/admin can insert role history" ON public.user_roles;
+DROP POLICY IF EXISTS "owner/admin can update role history" ON public.user_roles;
+
+CREATE POLICY "users can insert own request" ON public.role_change_requests
+  FOR INSERT WITH CHECK (auth.uid() = profile_id);
+
+CREATE POLICY "users can view own requests" ON public.role_change_requests
+  FOR SELECT USING (auth.uid() = profile_id);
+
+CREATE POLICY "owner/admin can view all requests" ON public.role_change_requests
+  FOR SELECT USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role IN ('مالك','إشراف إداري')));
+
+CREATE POLICY "owner/admin can update status" ON public.role_change_requests
+  FOR UPDATE USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role IN ('مالك','إشراف إداري')));
+
+CREATE POLICY "owner/admin can view all role history" ON public.user_roles
+  FOR SELECT USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role IN ('مالك','إشراف إداري')));
+
+CREATE POLICY "owner/admin can insert role history" ON public.user_roles
+  FOR INSERT WITH CHECK (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role IN ('مالك','إشراف إداري')));
+
+CREATE POLICY "owner/admin can update role history" ON public.user_roles
+  FOR UPDATE USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role IN ('مالك','إشراف إداري')));
 
 -- =====================================================
 -- SHIPMENTS POLICIES
@@ -476,7 +543,7 @@ CREATE POLICY "Admins can view all shipments"
     EXISTS (
       SELECT 1 FROM public.profiles 
       WHERE id = auth.uid() 
-      AND role IN ('owner', 'admin', 'employee')
+      AND role IN ('مالك', 'إشراف إداري', 'موظف')
     )
   );
 
@@ -502,7 +569,7 @@ CREATE POLICY "Admins can view all customers"
     EXISTS (
       SELECT 1 FROM public.profiles 
       WHERE id = auth.uid() 
-      AND role IN ('owner', 'admin', 'employee')
+      AND role IN ('مالك', 'إشراف إداري', 'موظف')
     )
   );
 
@@ -520,7 +587,7 @@ CREATE POLICY "Authorized can view suppliers"
     EXISTS (
       SELECT 1 FROM public.profiles 
       WHERE id = auth.uid() 
-      AND role IN ('owner', 'admin', 'employee', 'importer', 'agent')
+      AND role IN ('مالك', 'إشراف إداري', 'موظف', 'مستورد', 'مصدر')
     )
   );
 
@@ -534,7 +601,7 @@ CREATE POLICY "Admins can manage suppliers"
     EXISTS (
       SELECT 1 FROM public.profiles 
       WHERE id = auth.uid() 
-      AND role IN ('owner', 'admin', 'employee')
+      AND role IN ('مالك', 'إشراف إداري', 'موظف')
     )
   );
 
@@ -557,7 +624,7 @@ CREATE POLICY "Managers can view all tasks"
     EXISTS (
       SELECT 1 FROM public.profiles 
       WHERE id = auth.uid() 
-      AND role IN ('owner', 'admin', 'employee')
+      AND role IN ('مالك', 'إشراف إداري', 'موظف')
     )
   );
 
@@ -567,7 +634,7 @@ CREATE POLICY "Managers can create tasks"
     EXISTS (
       SELECT 1 FROM public.profiles 
       WHERE id = auth.uid() 
-      AND role IN ('owner', 'admin', 'employee')
+      AND role IN ('مالك', 'إشراف إداري', 'موظف')
     )
   );
 
@@ -592,7 +659,7 @@ CREATE POLICY "Only admins can manage hs codes"
     EXISTS (
       SELECT 1 FROM public.profiles 
       WHERE id = auth.uid() 
-      AND role IN ('owner', 'admin')
+      AND role IN ('مالك', 'إشراف إداري')
     )
   );
 
@@ -614,7 +681,7 @@ CREATE POLICY "Authorized users can create opportunities"
     EXISTS (
       SELECT 1 FROM public.profiles 
       WHERE id = auth.uid() 
-      AND role IN ('owner', 'admin', 'employee', 'agent')
+      AND role IN ('مالك', 'إشراف إداري', 'موظف', 'مصدر')
     )
   );
 
@@ -624,7 +691,7 @@ CREATE POLICY "Authorized users can update opportunities"
     EXISTS (
       SELECT 1 FROM public.profiles 
       WHERE id = auth.uid() 
-      AND role IN ('owner', 'admin', 'employee')
+      AND role IN ('مالك', 'إشراف إداري', 'موظف')
     )
   );
 
@@ -645,7 +712,7 @@ CREATE POLICY "Users can create ratings"
     EXISTS (
       SELECT 1 FROM public.profiles 
       WHERE id = auth.uid() 
-      AND role IN ('owner', 'admin', 'employee', 'importer', 'agent')
+      AND role IN ('مالك', 'إشراف إداري', 'موظف', 'مستورد', 'مصدر')
     )
   );
 
@@ -682,7 +749,7 @@ CREATE POLICY "Owner admin can view audit logs"
     EXISTS (
       SELECT 1 FROM public.profiles 
       WHERE id = auth.uid() 
-      AND role IN ('owner', 'admin')
+      AND role IN ('مالك', 'إشراف إداري')
     )
   );
 
@@ -700,15 +767,15 @@ BEGIN
     NEW.id,
     NEW.email,
     CASE
-      WHEN NEW.email IN ('hawadettt@gmail.com', 'hawadettt2@gmail.com') THEN 'owner'::public.user_role
-      ELSE 'importer'::public.user_role
+      WHEN NEW.email IN ('hawadettt@gmail.com', 'hawadettt2@gmail.com') THEN 'مالك'::public.user_role
+      ELSE 'مستخدم مسجل'::public.user_role
     END,
     'active',
     true
   )
   ON CONFLICT (id) DO UPDATE SET
     role = CASE
-      WHEN EXCLUDED.email IN ('hawadettt@gmail.com', 'hawadettt2@gmail.com') THEN 'owner'::public.user_role
+      WHEN EXCLUDED.email IN ('hawadettt@gmail.com', 'hawadettt2@gmail.com') THEN 'مالك'::public.user_role
       ELSE profiles.role
     END,
     email_verified = true,
@@ -757,6 +824,8 @@ GRANT USAGE ON SCHEMA public TO anon;
 
 -- Grant permissions on tables
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.profiles TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON public.role_change_requests TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON public.user_roles TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.shipments TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.customers TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.suppliers TO authenticated;
@@ -802,15 +871,15 @@ ON CONFLICT (code) DO NOTHING;
 -- MIGRATION: Fix invalid role values (user -> importer)
 -- =====================================================
 UPDATE public.profiles 
-SET role = 'importer'::public.user_role, 
+SET role = 'مستخدم مسجل'::public.user_role,
     status = 'active', 
     email_verified = true
-WHERE role::text NOT IN ('owner', 'admin', 'employee', 'importer', 'supplier', 'agent')
+WHERE role::text NOT IN ('مالك', 'إشراف إداري', 'موظف', 'مستورد', 'مورد', 'مصدر', 'مستخدم مسجل', 'زائر')
    OR role IS NULL;
 
 -- Force owner for specific emails
 UPDATE public.profiles 
-SET role = 'owner'::public.user_role, 
+SET role = 'مالك'::public.user_role,
     status = 'active', 
     email_verified = true
 WHERE email IN ('hawadettt@gmail.com', 'hawadettt2@gmail.com');

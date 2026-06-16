@@ -4,9 +4,9 @@ export type Json =
   | boolean
   | null
   | { [key: string]: Json | undefined }
-  | Json[]
+  | Json[];
 
-export type UserRole = 'owner' | 'admin' | 'employee' | 'importer' | 'supplier' | 'agent' | 'user';
+export type UserRole = 'مالك' | 'إشراف إداري' | 'موظف' | 'مستورد' | 'مورد' | 'مصدر' | 'مستخدم مسجل' | 'زائر';
 
 export interface Database {
   public: {

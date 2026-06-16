@@ -16,7 +16,7 @@ export function testZodValidation() {
   console.log('=== Test 1: Zod Schema Validation ===');
   
   // Valid roles
-  const validRoles: UserRole[] = ['owner', 'admin', 'employee', 'importer', 'supplier', 'agent'];
+  const validRoles: UserRole[] = ['مالك', 'إشراف إداري', 'موظف', 'مستورد', 'مورد', 'مصدر', 'مستخدم مسجل', 'زائر'];
   validRoles.forEach(role => {
     const result = UserRoleSchema.safeParse(role);
     console.log(`✓ Role "${role}" accepted:`, result.success);
@@ -36,14 +36,14 @@ export function testZodValidation() {
   // Valid role update
   const validUpdate = UpdateUserRoleSchema.safeParse({ 
     userId: '123e4567-e89b-12d3-a456-426614174000', 
-    newRole: 'admin' 
+    newRole: 'إشراف إداري'
   });
   console.log('✓ Valid role update accepted:', validUpdate.success);
 
   // Invalid UUID
   const invalidUpdate = UpdateUserRoleSchema.safeParse({ 
     userId: 'invalid-uuid', 
-    newRole: 'admin' 
+    newRole: 'إشراف إداري'
   });
   console.log('✓ Invalid UUID rejected:', !invalidUpdate.success);
 }
@@ -53,14 +53,14 @@ export function testZodValidation() {
  * 
  * Expected permissions matrix:
  * 
- * | Role      | Manage Users | Manage Roles | View Audit | Manage Shipments | Manage Customers | View Reports |
- * |-----------|--------------|--------------|-------------|------------------|------------------|---------------|
- * | owner     | ✓            | ✓            | ✓           | ✓                | ✓                | ✓             |
- * | admin     | ✓            | ✓            | ✓           | ✓                | ✓                | ✓             |
- * | employee  | ✓            | ✓            | ✓           | ✓                | ✓                | ✓             |
- * | importer  | ✗            | ✗            | ✗           | ✗                | ✗                | ✓             |
- * | supplier  | ✗            | ✗            | ✗           | ✗                | ✗                | ✓             |
- * | agent     | ✗            | ✗            | ✗           | ✗                | ✗                | ✓             |
+ * | Role             | Manage Users | Manage Roles | View Audit | Manage Shipments | Manage Customers | View Reports |
+ * |------------------|--------------|--------------|-------------|------------------|------------------|---------------|
+ * | مالك            | ✓            | ✓            | ✓           | ✓                | ✓                | ✓             |
+ * | إشراف إداري    | ✓            | ✓            | ✓           | ✓                | ✓                | ✓             |
+ * | موظف           | ✓            | ✓            | ✓           | ✓                | ✓                | ✓             |
+ * | مستورد         | ✗            | ✗            | ✗           | ✗                | ✗                | ✓             |
+ * | مورد           | ✗            | ✗            | ✗           | ✗                | ✗                | ✓             |
+ * | مصدر           | ✗            | ✗            | ✗           | ✗                | ✗                | ✓             |
  */
 
 /**
@@ -116,7 +116,7 @@ export function testZodValidation() {
  *    □ Unauthenticated users redirected to /login
  * 
  * 4. UI Components:
- *    □ Settings page shows all 6 roles in dropdown
+ *    □ Settings page shows all 8 roles in dropdown
  *    □ Sidebar shows Admin Dashboard link for admin roles
  *    □ Role display shows correct translation
  */

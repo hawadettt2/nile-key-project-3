@@ -13,7 +13,7 @@ interface UseCollectionResult<T> {
 }
 
 // Roles that can view all records (not filtered by user_id)
-const ADMIN_ROLES = ['owner', 'admin', 'employee'];
+const ADMIN_ROLES = ['مالك', 'إشراف إداري', 'موظف'];
 
 export function useCollection<T extends { id: string }>(
   supabase: SupabaseClient,
