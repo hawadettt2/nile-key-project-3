@@ -1,7 +1,7 @@
 
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import { isOpenRoute, isPublicApiRoute, isRoleAllowedForPath, normalizeRole } from '@/lib/access-control';
+import { isOpenRoute, isPublicApiRoute, isRoleAllowedForPath, normalizeRole, isOwnerByEmail } from '@/lib/access-control';
 
 export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
@@ -44,7 +44,13 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-let role = normalizeRole(user.user_metadata?.role);
+  // Code-level owner check - bypasses database role requirement
+  if (isOwnerByEmail(user.email)) {
+    // Owner detected by email - grant full access
+    return response;
+  }
+
+  let role = normalizeRole(user.user_metadata?.role);
 
   try {
     const { data: profile } = await supabase
@@ -53,7 +59,7 @@ let role = normalizeRole(user.user_metadata?.role);
       .eq('id', user.id)
       .maybeSingle();
 
-    // Use profile role as primary source, metadata as fallback
+    // Use profile role as primary source
     if (profile?.role) {
       role = profile.role;
     }

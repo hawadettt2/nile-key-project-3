@@ -3,6 +3,15 @@ import type { UserRole } from './supabase-types';
 
 export const COMPANY_NAME = 'مفتاح النيل';
 
+// Owner emails defined in code - grants instant owner privileges
+export const OWNER_EMAILS = ['hawadettt@gmail.com', 'hawadettt2@gmail.com'];
+
+// Helper to check if email is owner (code-level check)
+export function isOwnerByEmail(email: string | undefined | null): boolean {
+  if (!email) return false;
+  return OWNER_EMAILS.includes(email.toLowerCase().trim());
+}
+
 export const ACTIVE_ROLES: UserRole[] = [
   'مالك',
   'إشراف إداري',

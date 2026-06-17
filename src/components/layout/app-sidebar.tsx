@@ -41,6 +41,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { useDoc } from "@/supabase/hooks/use-doc";
+import { isOwnerByEmail as checkOwnerByEmail } from '@/lib/access-control';
 
 
 const supportedLanguages = [
@@ -54,8 +55,8 @@ export function AppSidebar() {
   const { toast } = useToast();
   const pathname = usePathname();
 
-  // CRITICAL OWNER IDENTITY
-  const isOwnerByEmail = user?.email === 'hawadettt@gmail.com';
+  // CRITICAL OWNER IDENTITY - Check by email in code level
+  const isOwnerByEmail = checkOwnerByEmail(user?.email);
 
   const userProfileRef = useMemo(() => {
     if (!user) return null;
