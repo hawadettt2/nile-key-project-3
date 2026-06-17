@@ -167,6 +167,17 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser(token);
   if (!user) return errorResponse('جلسة غير صالحة.', 401);
 
+  // Check if user email is verified
+  const { data: userProfile } = await supabase
+    .from('profiles')
+    .select('email_verified')
+    .eq('id', user.id)
+    .single();
+
+  if (!userProfile?.email_verified) {
+    return errorResponse('يجب التحقق من البريد الإلكتروني أولاً.', 403);
+  }
+
   // Check for existing pending request
   const { count } = await supabase
     .from('role_change_requests')
