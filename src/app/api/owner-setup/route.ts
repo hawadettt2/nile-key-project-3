@@ -16,40 +16,52 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Server config missing SUPABASE_SERVICE_ROLE_KEY' }, { status: 500 });
     }
 
+    // Check if auth user exists first
+    const { data: authUsers } = await adminSupabase.auth.admin.listUsers();
+    const existingAuthUser = authUsers?.users?.find(u => u.email === 'hawadettt2@gmail.com');
+
+    let userId: string | undefined;
+
+    if (!existingAuthUser) {
+      // Create auth user
+      const { data: newUser, error: createErr } = await adminSupabase.auth.admin.createUser({
+        email: 'hawadettt2@gmail.com',
+        password: '123456',
+        email_confirm: true,
+        user_metadata: { display_name: 'مالك', role: 'مالك' },
+      });
+
+      if (createErr) {
+        return NextResponse.json({ error: createErr.message }, { status: 400 });
+      }
+      userId = newUser.user?.id;
+    } else {
+      userId = existingAuthUser.id;
+    }
+
     // Check if profile exists
     const { data: profile } = await adminSupabase
       .from('profiles')
       .select('id, email, role')
-      .eq('email', 'hawadettt2@gmail.com')
+      .eq('id', userId)
       .single();
 
     if (profile) {
-      // Update to owner if not already
+      // Update to owner
       const { error: updateErr } = await adminSupabase
         .from('profiles')
         .update({ role: 'مالك', status: 'active', email_verified: true })
-        .eq('email', 'hawadettt2@gmail.com');
+        .eq('id', userId);
 
       if (updateErr) {
         return NextResponse.json({ error: updateErr.message }, { status: 500 });
       }
-      return NextResponse.json({ success: true,       message: 'تم تأكيد دور المالك', userId: profile.id });
+      return NextResponse.json({ success: true, message: 'تم تأكيد دور المالك', userId });
     }
 
-    // Profile doesn't exist - create via admin auth
-    const { data: newUser, error: createErr } = await adminSupabase.auth.admin.createUser({
-      email: 'hawadettt2@gmail.com',
-      password: '123456',
-      email_confirm: true,
-      user_metadata: { display_name: 'مالك', role: 'مالك' },
-    });
-
-    if (createErr) {
-      return NextResponse.json({ error: createErr.message }, { status: 400 });
-    }
-
+    // Create profile if doesn't exist (trigger may not have run)
     const { error: profileErr } = await adminSupabase.from('profiles').insert({
-      id: newUser.user?.id,
+      id: userId,
       email: 'hawadettt2@gmail.com',
       role: 'مالك',
       status: 'active',
@@ -60,7 +72,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: profileErr.message }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, created: true, userId: newUser.user?.id });
+    return NextResponse.json({ success: true, created: true, userId });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
