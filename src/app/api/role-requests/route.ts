@@ -16,9 +16,29 @@ function errorResponse(message: string, status = 500) {
   return NextResponse.json({ success: false, error: message }, { status });
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const supabase = createAdminClient();
   if (!supabase) return errorResponse('إعدادات Supabase غير مكتملة.');
+
+  // Check if reviewer exists and is admin/owner
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader) return errorResponse('غير مصرح.', 401);
+
+  // Get user from auth header (simplified - in production use Supabase auth)
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user } } = await supabase.auth.getUser(token);
+  
+  if (!user) return errorResponse('جلسة غير صالحة.', 401);
+
+  const { data: reviewer } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (!reviewer || !['مالك', 'إشراف إداري'].includes(reviewer.role)) {
+    return errorResponse('صلاحيات غير كافية.', 403);
+  }
 
   const { data, error } = await supabase
     .from('role_change_requests')
@@ -31,73 +51,143 @@ export async function GET() {
   return NextResponse.json({ success: true, data });
 }
 
+type RoleRequestAction = { requestId: string; approve: boolean };
+type RoleRequestCreate = { role: string; reason?: string };
+
 export async function POST(request: NextRequest) {
   const supabase = createAdminClient();
   if (!supabase) return errorResponse('إعدادات Supabase غير مكتملة.');
 
-  let body: { requestId?: unknown; approve?: unknown } = {};
+  let body: unknown = {};
   try {
     body = await request.json();
   } catch {
     return errorResponse('الطلب غير صالح.', 400);
   }
 
-  if (typeof body.requestId !== 'string' || typeof body.approve !== 'boolean') {
-    return errorResponse('requestId و approve مطلوبان.', 400);
-  }
+  // Check if this is a review action
+  if (typeof (body as RoleRequestAction).requestId === 'string' && 
+      typeof (body as RoleRequestAction).approve === 'boolean') {
+    const action = body as RoleRequestAction;
+    
+    // Verify reviewer is admin/owner
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader) return errorResponse('غير مصرح.', 401);
 
-  const { data: existing, error: fetchError } = await supabase
-    .from('role_change_requests')
-    .select('id, profile_id, requested_role, status, profiles!inner(email, role)')
-    .eq('id', body.requestId)
-    .single();
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user } } = await supabase.auth.getUser(token);
+    
+    if (!user) return errorResponse('جلسة غير صالحة.', 401);
 
-  if (fetchError) return errorResponse(fetchError.message, 500);
-  if (!existing) return errorResponse('الطلب غير موجود.', 404);
-  if (existing.status !== 'pending') return errorResponse('الطلب ليس قيد المراجعة.', 409);
-
-  if (body.approve) {
-    const newRole = existing.requested_role as UserRole;
-    const profileId = existing.profile_id;
-
-    const { error: markOldError } = await supabase
-      .from('user_roles')
-      .update({ is_current: false })
-      .eq('profile_id', profileId)
-      .eq('is_current', true);
-
-    if (markOldError) return errorResponse(markOldError.message);
-
-    const { error: profileError } = await supabase
+    const { data: reviewer } = await supabase
       .from('profiles')
-      .update({ role: newRole, status: 'active', email_verified: true, updated_at: new Date().toISOString() })
-      .eq('id', profileId);
+      .select('role')
+      .eq('id', user.id)
+      .single();
 
-    if (profileError) return errorResponse(profileError.message);
+    if (!reviewer || !['مالك', 'إشراف إداري'].includes(reviewer.role)) {
+      return errorResponse('صلاحيات غير كافية للمراجعة.', 403);
+    }
 
-    const { error: roleHistoryError } = await supabase
-      .from('user_roles')
-      .insert({
-        profile_id: profileId,
-        role: newRole,
-        assigned_at: new Date().toISOString(),
-        is_current: true,
-      });
+    const { data: existing, error: fetchError } = await supabase
+      .from('role_change_requests')
+      .select('id, profile_id, requested_role, status, profiles!inner(email, role)')
+      .eq('id', action.requestId)
+      .single();
 
-    if (roleHistoryError) return errorResponse(roleHistoryError.message);
+    if (fetchError) return errorResponse(fetchError.message, 500);
+    if (!existing) return errorResponse('الطلب غير موجود.', 404);
+    if (existing.status !== 'pending') return errorResponse('الطلب ليس قيد المراجعة.', 409);
+
+    if (action.approve) {
+      const newRole = existing.requested_role as UserRole;
+      const profileId = existing.profile_id;
+
+      const { error: markOldError } = await supabase
+        .from('user_roles')
+        .update({ is_current: false })
+        .eq('profile_id', profileId)
+        .eq('is_current', true);
+
+      if (markOldError) return errorResponse(markOldError.message);
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ role: newRole, status: 'active', updated_at: new Date().toISOString() })
+        .eq('id', profileId);
+
+      if (profileError) return errorResponse(profileError.message);
+
+      const { error: roleHistoryError } = await supabase
+        .from('user_roles')
+        .insert({
+          profile_id: profileId,
+          role: newRole,
+          assigned_at: new Date().toISOString(),
+          is_current: true,
+        });
+
+      if (roleHistoryError) return errorResponse(roleHistoryError.message);
+    }
+
+    const { data: updated, error: updateError } = await supabase
+      .from('role_change_requests')
+      .update({
+        status: action.approve ? 'approved' : 'rejected',
+        reviewer_id: user.id,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq('id', action.requestId)
+      .select('id, profile_id, requested_role, status, reason, reviewer_id, reviewed_at, created_at, profiles!inner(email, role)')
+      .single();
+
+    if (updateError) return errorResponse(updateError.message);
+
+    return NextResponse.json({ success: true, data: updated });
   }
 
-  const { data: updated, error: updateError } = await supabase
+  // Create new role request
+  const create = body as RoleRequestCreate;
+  
+  if (typeof create.role !== 'string') {
+    return errorResponse('role مطلوب.', 400);
+  }
+
+  // Validate role
+  const validRoles: UserRole[] = ['مالك', 'إشراف إداري', 'موظف', 'مستورد', 'مورد', 'مصدر', 'مستخدم مسجل', 'زائر'];
+  if (!validRoles.includes(create.role as UserRole)) {
+    return errorResponse('دور غير صالح.', 400);
+  }
+
+  // Get user from auth
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader) return errorResponse('غير مصرح.', 401);
+
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user } } = await supabase.auth.getUser(token);
+  if (!user) return errorResponse('جلسة غير صالحة.', 401);
+
+  // Check for existing pending request
+  const { count } = await supabase
     .from('role_change_requests')
-    .update({
-      status: body.approve ? 'approved' : 'rejected',
-      reviewed_at: new Date().toISOString(),
+    .select('*', { count: 'exact', head: true })
+    .eq('profile_id', user.id)
+    .eq('status', 'pending');
+
+  if (count && count > 0) return errorResponse('طلب قيد المراجعة موجود مسبقاً.', 409);
+
+  const { data, error } = await supabase
+    .from('role_change_requests')
+    .insert({
+      profile_id: user.id,
+      requested_role: create.role,
+      status: 'pending',
+      reason: typeof create.reason === 'string' ? create.reason : null,
     })
-    .eq('id', body.requestId)
-    .select('id, profile_id, requested_role, status, reason, reviewer_id, reviewed_at, created_at, profiles!inner(email, role)')
+    .select()
     .single();
 
-  if (updateError) return errorResponse(updateError.message);
+  if (error) return errorResponse(error.message, 500);
 
-  return NextResponse.json({ success: true, data: updated });
+  return NextResponse.json({ success: true, data });
 }
