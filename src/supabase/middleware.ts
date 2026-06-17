@@ -44,23 +44,25 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  let role = normalizeRole(user.user_metadata?.role);
+let role = normalizeRole(user.user_metadata?.role);
 
-try {
+  try {
     const { data: profile } = await supabase
       .from('profiles')
       .select('role, status, email_verified')
       .eq('id', user.id)
       .maybeSingle();
 
-    role = normalizeRole(profile?.role) ?? role;
+    // Use profile role as primary source, metadata as fallback
+    if (profile?.role) {
+      role = profile.role;
+    }
 
     if (profile?.status && ['suspended', 'rejected'].includes(profile.status)) {
       return NextResponse.redirect(new URL('/unauthorized', request.url));
     }
 
     if (!profile?.email_verified && pathname !== '/login') {
-      // Redirect to login with verify parameter - /login is open so no loop
       return NextResponse.redirect(new URL('/login?verify=true', request.url));
     }
   } catch (error) {
