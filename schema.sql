@@ -101,6 +101,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   -- Account Status (Email-only verification)
   status TEXT DEFAULT 'active' CHECK (status IN ('active', 'suspended', 'rejected')),
   email_verified BOOLEAN DEFAULT false,
+  verification_code TEXT,
+  verification_code_expires_at TIMESTAMP WITH TIME ZONE,
   
   -- Preferences
   language_preference TEXT DEFAULT 'ar',
