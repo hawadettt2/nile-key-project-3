@@ -60,6 +60,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Ensure profile exists (trigger may not have fired)
+    const { error: profileErr } = await adminSupabase.from('profiles').upsert({
+      id: data.user.id,
+      email: data.user.email,
+      display_name: displayName,
+      role: 'مستخدم مسجل',
+      status: 'active',
+      email_verified: true,
+    }, { onConflict: 'id' });
+
+    if (profileErr) {
+      console.error('Profile upsert error:', profileErr);
+    }
+
     return NextResponse.json({ success: true, user: data.user });
   } catch (error: any) {
     console.error('Registration route error:', error);
