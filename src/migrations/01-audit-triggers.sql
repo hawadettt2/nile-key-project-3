@@ -3,10 +3,6 @@
 -- Adds automatic audit logging for all data changes
 -- =====================================================
 
--- Enable RLS on role management tables (if not already)
-ALTER TABLE public.role_change_requests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
-
 -- =====================================================
 -- Audit Logging Function
 -- =====================================================
@@ -39,54 +35,67 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- =====================================================
 -- Audit Triggers on all tables
 -- =====================================================
-CREATE TRIGGER IF NOT EXISTS audit_profiles_changes
+DROP TRIGGER IF EXISTS audit_profiles_changes ON public.profiles;
+CREATE TRIGGER audit_profiles_changes
   AFTER INSERT OR UPDATE OR DELETE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.log_audit_changes();
 
-CREATE TRIGGER IF NOT EXISTS audit_shipments_changes
+DROP TRIGGER IF EXISTS audit_shipments_changes ON public.shipments;
+CREATE TRIGGER audit_shipments_changes
   AFTER INSERT OR UPDATE OR DELETE ON public.shipments
   FOR EACH ROW EXECUTE FUNCTION public.log_audit_changes();
 
-CREATE TRIGGER IF NOT EXISTS audit_customers_changes
+DROP TRIGGER IF EXISTS audit_customers_changes ON public.customers;
+CREATE TRIGGER audit_customers_changes
   AFTER INSERT OR UPDATE OR DELETE ON public.customers
   FOR EACH ROW EXECUTE FUNCTION public.log_audit_changes();
 
-CREATE TRIGGER IF NOT EXISTS audit_suppliers_changes
+DROP TRIGGER IF EXISTS audit_suppliers_changes ON public.suppliers;
+CREATE TRIGGER audit_suppliers_changes
   AFTER INSERT OR UPDATE OR DELETE ON public.suppliers
   FOR EACH ROW EXECUTE FUNCTION public.log_audit_changes();
 
-CREATE TRIGGER IF NOT EXISTS audit_important_sites_changes
+DROP TRIGGER IF EXISTS audit_important_sites_changes ON public.important_sites;
+CREATE TRIGGER audit_important_sites_changes
   AFTER INSERT OR UPDATE OR DELETE ON public.important_sites
   FOR EACH ROW EXECUTE FUNCTION public.log_audit_changes();
 
-CREATE TRIGGER IF NOT EXISTS audit_site_categories_changes
+DROP TRIGGER IF EXISTS audit_site_categories_changes ON public.site_categories;
+CREATE TRIGGER audit_site_categories_changes
   AFTER INSERT OR UPDATE OR DELETE ON public.site_categories
   FOR EACH ROW EXECUTE FUNCTION public.log_audit_changes();
 
-CREATE TRIGGER IF NOT EXISTS audit_employee_tasks_changes
+DROP TRIGGER IF EXISTS audit_employee_tasks_changes ON public.employee_tasks;
+CREATE TRIGGER audit_employee_tasks_changes
   AFTER INSERT OR UPDATE OR DELETE ON public.employee_tasks
   FOR EACH ROW EXECUTE FUNCTION public.log_audit_changes();
 
-CREATE TRIGGER IF NOT EXISTS audit_hs_codes_changes
+DROP TRIGGER IF EXISTS audit_hs_codes_changes ON public.hs_codes;
+CREATE TRIGGER audit_hs_codes_changes
   AFTER INSERT OR UPDATE OR DELETE ON public.hs_codes
   FOR EACH ROW EXECUTE FUNCTION public.log_audit_changes();
 
-CREATE TRIGGER IF NOT EXISTS audit_export_opportunities_changes
+DROP TRIGGER IF EXISTS audit_export_opportunities_changes ON public.export_opportunities;
+CREATE TRIGGER audit_export_opportunities_changes
   AFTER INSERT OR UPDATE OR DELETE ON public.export_opportunities
   FOR EACH ROW EXECUTE FUNCTION public.log_audit_changes();
 
-CREATE TRIGGER IF NOT EXISTS audit_supplier_ratings_changes
+DROP TRIGGER IF EXISTS audit_supplier_ratings_changes ON public.supplier_ratings;
+CREATE TRIGGER audit_supplier_ratings_changes
   AFTER INSERT OR UPDATE OR DELETE ON public.supplier_ratings
   FOR EACH ROW EXECUTE FUNCTION public.log_audit_changes();
 
-CREATE TRIGGER IF NOT EXISTS audit_export_alerts_changes
+DROP TRIGGER IF EXISTS audit_export_alerts_changes ON public.export_alerts;
+CREATE TRIGGER audit_export_alerts_changes
   AFTER INSERT OR UPDATE OR DELETE ON public.export_alerts
   FOR EACH ROW EXECUTE FUNCTION public.log_audit_changes();
 
-CREATE TRIGGER IF NOT EXISTS audit_role_change_requests_changes
+DROP TRIGGER IF EXISTS audit_role_change_requests_changes ON public.role_change_requests;
+CREATE TRIGGER audit_role_change_requests_changes
   AFTER INSERT OR UPDATE ON public.role_change_requests
   FOR EACH ROW EXECUTE FUNCTION public.log_audit_changes();
 
-CREATE TRIGGER IF NOT EXISTS audit_user_roles_changes
+DROP TRIGGER IF EXISTS audit_user_roles_changes ON public.user_roles;
+CREATE TRIGGER audit_user_roles_changes
   AFTER INSERT OR UPDATE ON public.user_roles
   FOR EACH ROW EXECUTE FUNCTION public.log_audit_changes();
