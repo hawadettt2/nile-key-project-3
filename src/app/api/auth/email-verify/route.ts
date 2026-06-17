@@ -27,20 +27,32 @@ function getExpiryTime(): string {
 }
 
 export async function POST(request: NextRequest) {
+  const adminSupabase = createAdminClient();
+  if (!adminSupabase) {
+    return NextResponse.json(
+      { error: 'Server configuration missing' },
+      { status: 500 }
+    );
+  }
+
+  // Require authentication
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user } } = await adminSupabase.auth.getUser(token);
+  if (!user) {
+    return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
-    const email = typeof body?.email === 'string' ? body.email.trim() : '';
+    const email = typeof body?.email === 'string' ? body.email.trim() : user.email;
 
     if (!email) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
-    }
-
-    const adminSupabase = createAdminClient();
-    if (!adminSupabase) {
-      return NextResponse.json(
-        { error: 'Server configuration missing' },
-        { status: 500 }
-      );
     }
 
     const verificationCode = generateVerificationCode();
@@ -92,6 +104,14 @@ return NextResponse.json({
 }
 
 export async function PUT(request: NextRequest) {
+  const adminSupabase = createAdminClient();
+  if (!adminSupabase) {
+    return NextResponse.json(
+      { error: 'Server configuration missing' },
+      { status: 500 }
+    );
+  }
+
   try {
     const body = await request.json();
     const email = typeof body?.email === 'string' ? body.email.trim() : '';
@@ -101,14 +121,6 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json(
         { error: 'Email and verification code are required' },
         { status: 400 }
-      );
-    }
-
-    const adminSupabase = createAdminClient();
-    if (!adminSupabase) {
-      return NextResponse.json(
-        { error: 'Server configuration missing' },
-        { status: 500 }
       );
     }
 

@@ -59,11 +59,9 @@ try {
       return NextResponse.redirect(new URL('/unauthorized', request.url));
     }
 
-    if (!profile?.email_verified && !isOpenRoute(pathname) && pathname !== '/login') {
-      // Allow access to login page with verify parameter
-      if (pathname !== '/login' || !request.nextUrl.searchParams.has('verify')) {
-        return NextResponse.redirect(new URL('/login?verify=true', request.url));
-      }
+    if (!profile?.email_verified && pathname !== '/login') {
+      // Redirect to login with verify parameter - /login is open so no loop
+      return NextResponse.redirect(new URL('/login?verify=true', request.url));
     }
   } catch (error) {
     console.error('Middleware profile fetch error:', error);
