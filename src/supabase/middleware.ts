@@ -46,10 +46,10 @@ export async function updateSession(request: NextRequest) {
 
   let role = normalizeRole(user.user_metadata?.role);
 
-  try {
+try {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role, status')
+      .select('role, status, email_verified')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -57,6 +57,10 @@ export async function updateSession(request: NextRequest) {
 
     if (profile?.status && ['suspended', 'rejected'].includes(profile.status)) {
       return NextResponse.redirect(new URL('/unauthorized', request.url));
+    }
+
+    if (!profile?.email_verified && !isOpenRoute('/login')) {
+      return NextResponse.redirect(new URL('/login?verify=true', request.url));
     }
   } catch (error) {
     console.error('Middleware profile fetch error:', error);

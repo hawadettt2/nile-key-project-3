@@ -29,6 +29,8 @@ export interface Database {
           permissions: Json;
           entity_id: string | null;
           status: 'active' | 'suspended' | 'rejected' | null;
+          verification_code: string | null;
+          verification_code_expires_at: string | null;
           language_preference: string | null;
           theme_preference: string | null;
           created_at: string;
@@ -47,6 +49,8 @@ export interface Database {
           permissions?: Json;
           entity_id?: string | null;
           status?: 'active' | 'suspended' | 'rejected' | null;
+          verification_code?: string | null;
+          verification_code_expires_at?: string | null;
           language_preference?: string | null;
           theme_preference?: string | null;
           created_at?: string;
@@ -65,6 +69,8 @@ export interface Database {
           permissions?: Json;
           entity_id?: string | null;
           status?: 'active' | 'suspended' | 'rejected' | null;
+          verification_code?: string | null;
+          verification_code_expires_at?: string | null;
           language_preference?: string | null;
           theme_preference?: string | null;
           created_at?: string;

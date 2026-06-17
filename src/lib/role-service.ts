@@ -86,12 +86,16 @@ export async function reviewRoleRequest(
   if (err2) throw err2;
 
   if (approve) {
-    await supabase.from('user_roles').insert({
-      profile_id: req.profile_id,
-      role: req.profiles.role,
-      assigned_at: new Date().toISOString(),
-      is_current: false,
-    });
+    const currentRole = req.profiles?.role;
+
+    if (currentRole) {
+      await supabase.from('user_roles').insert({
+        profile_id: req.profile_id,
+        role: currentRole,
+        assigned_at: new Date().toISOString(),
+        is_current: false,
+      });
+    }
 
     await supabase
       .from('profiles')

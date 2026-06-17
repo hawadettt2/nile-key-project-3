@@ -371,16 +371,17 @@ CREATE TRIGGER audit_profiles_changes
 
 ---
 
-## ترتيب التنفيذ
+## ترتيب التنفيذ (محسن)
 1. ✅ تحديث schema.sql (المهمة 1، 2، 3)
-2. ✅ تحديث TypeScript types (المهمة 4)
-3. ✅ إنشاء وظائف التدقيق (المهمة 5)
-4. ⏳ تحديث Middleware (المهمة 6)
-5. ⏳ تطوير OTP email (المهمة 7)
-6. ⏳ تحديث صفحة التسجيل (المهمة 8)
-7. ⏳ إنشاء Admin Dashboard (المهمة 9)
-8. ⏳ تحديث مكونات الواجهة لدعم الأدوار الجديدة
-9. ⏳ اختبار شامل لنظام الصلاحيات
+2. ✅ إنشاء migration audit-triggers-complete.sql (audit triggers + verification columns)
+3. ✅ تحديث TypeScript types (database.types.ts + supabase-types.ts)
+4. ✅ تحديث Middleware (التحقق من email_verified)
+5. ✅ إنشاء API نظام OTP email (POST لإرسال الكود، PUT للتحقق)
+6. 🔧 إصلاح role-service.ts (خطأ منطقي في reviewRoleRequest)
+7. 🔧 تصحيح مسار التسجيل (/api/register → /api/auth/register)
+8. ⏳ تنفيذ migration في Supabase SQL Editor
+9. ⏳ تحديث صفحة التسجيل لتشمل خطوات OTP
+10. ⏳ اختبار تكامل كامل
 
 ---
 
