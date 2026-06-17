@@ -920,3 +920,17 @@ END $$;
 -- =====================================================
 -- END OF SCHEMA
 -- =====================================================
+
+-- =====================================================
+-- OWNER ACCOUNT VERIFICATION (Run after schema)
+-- Ensures owner accounts exist with correct role
+-- =====================================================
+DO $$ 
+BEGIN
+  -- Ensure owner profiles exist and have correct role
+  IF EXISTS (SELECT 1 FROM auth.users WHERE email IN ('hawadettt@gmail.com', 'hawadettt2@gmail.com')) THEN
+    UPDATE public.profiles 
+    SET role = 'مالك', status = 'active', email_verified = true
+    WHERE email IN ('hawadettt@gmail.com', 'hawadettt2@gmail.com');
+  END IF;
+END $$;
