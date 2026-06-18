@@ -55,20 +55,25 @@ export function AppSidebar() {
   const { toast } = useToast();
   const pathname = usePathname();
 
-  // CRITICAL OWNER IDENTITY - Check by email in code level
+// CRITICAL OWNER IDENTITY - Check by email in code level
   const isOwnerByEmail = checkOwnerByEmail(user?.email);
 
-  const userProfileRef = useMemo(() => {
-    if (!user) return null;
-    return { tableName: 'profiles', id: user.id };
-  }, [user]);
+   const userProfileRef = useMemo(() => {
+     if (!user) return null;
+     return { tableName: 'profiles', id: user.id };
+   }, [user]);
 
-  // Use any to avoid TypeScript errors with profile fields
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(
-    supabase,
-    'profiles',
-    user?.id
-  );
+   // Use any to avoid TypeScript errors with profile fields
+   const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(
+     supabase,
+     'profiles',
+     user?.id
+   );
+
+    // For owner, use user metadata; for others, load profile via hook
+   const displayName = isOwnerByEmail 
+     ? userProfile?.display_name || user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'مالك'
+     : userProfile?.display_name || user?.user_metadata?.display_name || '';
   
   // Updated to use new role system
   const hasAdminRole = userProfile?.role && ['مالك', 'إشراف إداري', 'موظف'].includes(userProfile.role);
@@ -147,11 +152,12 @@ export function AppSidebar() {
                        <AvatarImage src={userProfile?.avatar_url || user?.user_metadata?.avatar_url} />
                        <AvatarFallback>{userProfile?.display_name?.[0]?.toUpperCase() ?? user?.email?.[0]?.toUpperCase() ?? 'U'}</AvatarFallback>
                      </Avatar>
-                 <Link href="/settings" className="flex-grow overflow-hidden">
-                     <div className="flex flex-col justify-center h-full">
-                        <p className="truncate text-sm font-semibold text-sidebar-foreground">{getRoleDisplay()}</p>
-                     </div>
-                 </Link>
+<Link href="/settings" className="flex-grow overflow-hidden">
+                      <div className="flex flex-col justify-center h-full">
+                         <p className="truncate text-sm font-semibold text-sidebar-foreground">{displayName || getRoleDisplay()}</p>
+                         <p className="truncate text-xs text-muted-foreground">{getRoleDisplay()}</p>
+                      </div>
+                  </Link>
                  <LogOut onClick={handleLogout} className="ms-auto h-5 w-5 flex-shrink-0 cursor-pointer text-muted-foreground hover:text-foreground" />
              </div>
             ) : (
