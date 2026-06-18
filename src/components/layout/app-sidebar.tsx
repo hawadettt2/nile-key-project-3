@@ -96,6 +96,9 @@ const { toast } = useToast();
   const hasAdminRole = sidebarProfile?.role && ['مالك', 'إشراف إداري', 'موظف'].includes(sidebarProfile.role);
   const isAdmin = isOwnerByEmail || hasAdminRole;
 
+  // For display: prefer profile data from API, fallback to user_metadata, then email
+  const displayName = sidebarProfile?.display_name || user?.user_metadata?.display_name || user?.email?.split('@')[0] || (isOwnerByEmail ? 'مالك' : 'مستخدم');
+
   const handleLogout = async () => {
     try {
       await signOut();
