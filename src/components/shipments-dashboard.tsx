@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -9,8 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Package, AlertTriangle, Truck } from "lucide-react";
 import { useSupabase } from "@/supabase/provider";
 import { supabase } from "@/supabase/client";
-import { format } from 'date-fns';
-import { ar, enUS } from 'date-fns/locale';
 import { useLanguage } from "@/context/language-provider";
 
 export function ShipmentsDashboard() {
@@ -40,14 +38,14 @@ export function ShipmentsDashboard() {
       }
       setIsLoadingShipments(true);
       try {
-        const { data, error } = await supabase
-          .from('shipments')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-        if (error) throw error;
-        setShipments(data || []);
-      } catch (error) {
+        const { data: { session } } = await supabase.auth.getSession();
+        const response = await fetch('/api/shipments', {
+          headers: { Authorization: `Bearer ${session?.access_token}` },
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || 'فشل تحميل الشحنات');
+        setShipments(payload.data || []);
+      } catch (error: any) {
         console.error('Error fetching shipments:', error);
       } finally {
         setIsLoadingShipments(false);
