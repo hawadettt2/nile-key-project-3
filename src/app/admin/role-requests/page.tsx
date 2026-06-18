@@ -44,14 +44,18 @@ export default function RoleRequestsPage() {
   const loadRequests = async () => {
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        throw new Error(sessionError?.message || 'No active session - please login');
+      }
       const response = await fetch('/api/role-requests', {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
+        headers: { Authorization: `Bearer ${session.access_token}` },
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'تعذر تحميل طلبات الأدوار.');
       setRequests(payload.data || []);
     } catch (error: any) {
+      console.error('[RoleRequests] Error:', error);
       toast({ variant: 'destructive', title: 'تعذر التحميل', description: error.message });
     } finally {
       setLoading(false);
