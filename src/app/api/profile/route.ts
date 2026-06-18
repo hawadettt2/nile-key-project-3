@@ -64,14 +64,25 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const { displayName, phone, country } = body;
 
+  const updateData: any = {
+    display_name: displayName,
+    updated_at: new Date().toISOString(),
+  };
+
+  // Phone validation - must be NULL or match E.164 format
+  if (phone && phone.trim() !== '') {
+    if (phone.match(/^\+[1-9]\d{1,14}$/)) {
+      updateData.phone = phone;
+    }
+  } else {
+    updateData.phone = null;
+  }
+
+  if (country !== undefined) updateData.country = country;
+
   const { data, error } = await supabase
     .from('profiles')
-    .update({
-      display_name: displayName,
-      phone,
-      country,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updateData)
     .eq('id', user.id)
     .select()
     .single();
