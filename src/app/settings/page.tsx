@@ -5,10 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Save, User } from 'lucide-react';
+import { Loader2, Save } from 'lucide-react';
 import { supabase } from '@/supabase/client';
 import { useSupabase } from '@/supabase/provider';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/context/language-provider';
 
 export default function SettingsPage() {
   const [displayName, setDisplayName] = useState('');
@@ -18,6 +19,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const { user } = useSupabase();
   const { toast } = useToast();
+  const { language, setLanguage } = useLanguage();
 
   useEffect(() => {
     const loadProfile = async () => {
