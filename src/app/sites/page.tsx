@@ -58,13 +58,13 @@ export default function ImportantSitesPage() {
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Bookmark className="h-6 w-6 text-primary" />
-                  مواقعي المحفوظة
-                </CardTitle>
-                <CardDescription>
-                  جميع المواقع والمنصات التي حفظتها للمرجعية السريعة في عملك
-                </CardDescription>
+<CardTitle className="flex items-center gap-2">
+              <Bookmark className="h-6 w-6 text-primary" />
+              مواقع موثقة
+            </CardTitle>
+            <CardDescription>
+              المواقع والمنصات الموثقة التي تُعد مرجعاً موثوقاً لعملك
+            </CardDescription>
               </div>
               <Button asChild>
                 <a href="/sites/new">
