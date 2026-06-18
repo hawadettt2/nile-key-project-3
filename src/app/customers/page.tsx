@@ -9,6 +9,7 @@ import { supabase } from '@/supabase/client';
 import { useSupabase } from '@/supabase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import AppLayout from '@/app/app-layout';
 
 type Customer = {
   id: string;
@@ -52,69 +53,71 @@ export default function CustomersPage() {
   }, [user]);
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle>العملاء</CardTitle>
-              <CardDescription>إدارة العملاء وعرض معلوماتهم</CardDescription>
+    <AppLayout>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle>العملاء</CardTitle>
+                <CardDescription>إدارة العملاء وعرض معلوماتهم</CardDescription>
+              </div>
+              <Button asChild>
+                <a href="/customers/new">
+                  <PlusCircle className="h-4 w-4 mr-2" />
+                  عميل جديد
+                </a>
+              </Button>
             </div>
-            <Button asChild>
-              <a href="/customers/new">
-                <PlusCircle className="h-4 w-4 mr-2" />
-                عميل جديد
-              </a>
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="py-8 text-center">
-              <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-            </div>
-          ) : customers.length === 0 ? (
-            <div className="py-8 text-center text-muted-foreground">
-              لا توجد عملاء مسجلين
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>الاسم</TableHead>
-                    <TableHead>اسم الشركة</TableHead>
-                    <TableHead>البريد</TableHead>
-                    <TableHead>الهاتف</TableHead>
-                    <TableHead>البلد</TableHead>
-                    <TableHead>تاريخ التسجيل</TableHead>
-                    <TableHead>الإجراءات</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {customers.map((customer) => (
-                    <TableRow key={customer.id}>
-                      <TableCell className="font-medium">{customer.name}</TableCell>
-                      <TableCell>{customer.company_name}</TableCell>
-                      <TableCell>{customer.email}</TableCell>
-                      <TableCell>{customer.phone}</TableCell>
-                      <TableCell>{customer.country}</TableCell>
-                      <TableCell>{new Date(customer.created_at).toLocaleDateString('ar-EG')}</TableCell>
-                      <TableCell>
-                        <Button size="sm" variant="outline" asChild>
-                          <a href={`/customers/${customer.id}`}>
-                            <Edit className="h-3 w-3" />
-                          </a>
-                        </Button>
-                      </TableCell>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="py-8 text-center">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+              </div>
+            ) : customers.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground">
+                لا توجد عملاء مسجلين
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>الاسم</TableHead>
+                      <TableHead>اسم الشركة</TableHead>
+                      <TableHead>البريد</TableHead>
+                      <TableHead>الهاتف</TableHead>
+                      <TableHead>البلد</TableHead>
+                      <TableHead>تاريخ التسجيل</TableHead>
+                      <TableHead>الإجراءات</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+                  </TableHeader>
+                  <TableBody>
+                    {customers.map((customer) => (
+                      <TableRow key={customer.id}>
+                        <TableCell className="font-medium">{customer.name}</TableCell>
+                        <TableCell>{customer.company_name}</TableCell>
+                        <TableCell>{customer.email}</TableCell>
+                        <TableCell>{customer.phone}</TableCell>
+                        <TableCell>{customer.country}</TableCell>
+                        <TableCell>{new Date(customer.created_at).toLocaleDateString('ar-EG')}</TableCell>
+                        <TableCell>
+                          <Button size="sm" variant="outline" asChild>
+                            <a href={`/customers/${customer.id}`}>
+                              <Edit className="h-3 w-3" />
+                            </a>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </AppLayout>
   );
 }

@@ -9,6 +9,7 @@ import { supabase } from '@/supabase/client';
 import { useSupabase } from '@/supabase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import AppLayout from '@/app/app-layout';
 
 type Supplier = {
   id: string;
@@ -54,75 +55,77 @@ export default function SuppliersPage() {
   }, [user]);
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle>الموردون</CardTitle>
-              <CardDescription>إدارة الموردين وعرض معلوماتهم</CardDescription>
+    <AppLayout>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle>الموردون</CardTitle>
+                <CardDescription>إدارة الموردين وعرض معلوماتهم</CardDescription>
+              </div>
+              <Button asChild>
+                <a href="/suppliers/new">
+                  <PlusCircle className="h-4 w-4 mr-2" />
+                  مورد جديد
+                </a>
+              </Button>
             </div>
-            <Button asChild>
-              <a href="/suppliers/new">
-                <PlusCircle className="h-4 w-4 mr-2" />
-                مورد جديد
-              </a>
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="py-8 text-center">
-              <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-            </div>
-          ) : suppliers.length === 0 ? (
-            <div className="py-8 text-center text-muted-foreground">
-              لا توجد موردين مسجلين
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>اسم الشركة</TableHead>
-                    <TableHead>جهة الاتصال</TableHead>
-                    <TableHead>البريد</TableHead>
-                    <TableHead>الهاتف</TableHead>
-                    <TableHead>المحافظة</TableHead>
-                    <TableHead>القائمة البيضاء</TableHead>
-                    <TableHead>تاريخ التسجيل</TableHead>
-                    <TableHead>الإجراءات</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {suppliers.map((supplier) => (
-                    <TableRow key={supplier.id}>
-                      <TableCell className="font-medium">{supplier.name}</TableCell>
-                      <TableCell>{supplier.contact_person}</TableCell>
-                      <TableCell>{supplier.email}</TableCell>
-                      <TableCell>{supplier.phone}</TableCell>
-                      <TableCell>{supplier.governorate}</TableCell>
-                      <TableCell>
-                        <Badge variant={supplier.is_nfsa_whitelisted ? 'secondary' : 'outline'}>
-                          {supplier.is_nfsa_whitelisted ? 'نعم' : 'لا'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{new Date(supplier.created_at).toLocaleDateString('ar-EG')}</TableCell>
-                      <TableCell>
-                        <Button size="sm" variant="outline" asChild>
-                          <a href={`/suppliers/${supplier.id}`}>
-                            <Edit className="h-3 w-3" />
-                          </a>
-                        </Button>
-                      </TableCell>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="py-8 text-center">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+              </div>
+            ) : suppliers.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground">
+                لا توجد موردين مسجلين
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>اسم الشركة</TableHead>
+                      <TableHead>جهة الاتصال</TableHead>
+                      <TableHead>البريد</TableHead>
+                      <TableHead>الهاتف</TableHead>
+                      <TableHead>المحافظة</TableHead>
+                      <TableHead>القائمة البيضاء</TableHead>
+                      <TableHead>تاريخ التسجيل</TableHead>
+                      <TableHead>الإجراءات</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+                  </TableHeader>
+                  <TableBody>
+                    {suppliers.map((supplier) => (
+                      <TableRow key={supplier.id}>
+                        <TableCell className="font-medium">{supplier.name}</TableCell>
+                        <TableCell>{supplier.contact_person}</TableCell>
+                        <TableCell>{supplier.email}</TableCell>
+                        <TableCell>{supplier.phone}</TableCell>
+                        <TableCell>{supplier.governorate}</TableCell>
+                        <TableCell>
+                          <Badge variant={supplier.is_nfsa_whitelisted ? 'secondary' : 'outline'}>
+                            {supplier.is_nfsa_whitelisted ? 'نعم' : 'لا'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{new Date(supplier.created_at).toLocaleDateString('ar-EG')}</TableCell>
+                        <TableCell>
+                          <Button size="sm" variant="outline" asChild>
+                            <a href={`/suppliers/${supplier.id}`}>
+                              <Edit className="h-3 w-3" />
+                            </a>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </AppLayout>
   );
 }
