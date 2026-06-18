@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useSupabase } from '@/supabase/provider';
+import { supabase } from '@/supabase/client';
 import type { UserRole } from '@/lib/supabase-types';
 
 const AVAILABLE_ROLES: { value: UserRole; label: string; description: string }[] = [
@@ -30,9 +31,13 @@ export default function RoleSelection() {
   async function submit() {
     if (!selected) return;
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch('/api/role-change-requests', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
         body: JSON.stringify({ role: selected }),
       });
       const payload = await response.json();

@@ -44,36 +44,30 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const { data, error } = await supabase
+  const { data: requests, error } = await supabase
     .from('role_change_requests')
-    .select(`
-      id, 
-      profile_id, 
-      requested_role, 
-      status, 
-      reason, 
-      reviewer_id, 
-      reviewed_at, 
-      created_at
-    `)
+    .select('*')
     .eq('status', 'pending')
     .order('created_at', { ascending: false });
 
+  if (error) return errorResponse(error.message);
+
   // Fetch profile data separately to avoid join issues
-  if (data) {
+  let data = requests || [];
+  if (data.length > 0) {
     const profileIds = data.map(r => r.profile_id);
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id,email,role')
       .in('id', profileIds);
     
-    data.forEach(req => {
-      const profile = profiles?.find(p => p.id === req.profile_id);
-      req.profiles = profile ? { email: profile.email, role: profile.role } : undefined;
-    });
+    data = data.map(req => ({
+      ...req,
+      profiles: profiles?.find(p => p.id === req.profile_id) 
+        ? { email: profiles.find(p => p.id === req.profile_id)!.email, role: profiles.find(p => p.id === req.profile_id)!.role }
+        : undefined,
+    }));
   }
-
-  if (error) return errorResponse(error.message);
 
   return NextResponse.json({ success: true, data });
 }
