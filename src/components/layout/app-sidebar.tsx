@@ -40,7 +40,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { useDoc } from "@/supabase/hooks/use-doc";
 import { isOwnerByEmail as checkOwnerByEmail } from '@/lib/access-control';
 
 
@@ -80,24 +79,15 @@ const { toast } = useToast();
     fetchProfile();
   }, [user]);
 
-  const userProfileRef = useMemo(() => {
-    if (!user) return null;
-    return { tableName: 'profiles', id: user.id };
-  }, [user]);
-
-// Use any to avoid TypeScript errors with profile fields
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(
-    supabase,
-    'profiles',
-    user?.id
-  );
-
-  // For admin check, use sidebarProfile from API
+// For admin check, use sidebarProfile from API
   const hasAdminRole = sidebarProfile?.role && ['مالك', 'إشراف إداري', 'موظف'].includes(sidebarProfile.role);
   const isAdmin = isOwnerByEmail || hasAdminRole;
 
   // For display: prefer profile data from API, fallback to user_metadata, then email
   const displayName = sidebarProfile?.display_name || user?.user_metadata?.display_name || user?.email?.split('@')[0] || (isOwnerByEmail ? 'مالك' : 'مستخدم');
+
+  // For avatar fallback
+  const avatarLetter = sidebarProfile?.display_name?.[0]?.toUpperCase() ?? user?.email?.[0]?.toUpperCase() ?? 'U';
 
   const handleLogout = async () => {
     try {
@@ -168,10 +158,10 @@ const { toast } = useToast();
             </div>
 ) : user ? (
              <div className="flex items-center gap-3 rounded-md p-2">
-                     <Avatar className="h-10 w-10 border-2 border-sidebar-accent">
-                       <AvatarImage src={userProfile?.avatar_url || user?.user_metadata?.avatar_url} />
-                       <AvatarFallback>{userProfile?.display_name?.[0]?.toUpperCase() ?? user?.email?.[0]?.toUpperCase() ?? 'U'}</AvatarFallback>
-                     </Avatar>
+<Avatar className="h-10 w-10 border-2 border-sidebar-accent">
+                        <AvatarImage src={sidebarProfile?.avatar_url || user?.user_metadata?.avatar_url} />
+                        <AvatarFallback>{avatarLetter}</AvatarFallback>
+                      </Avatar>
 <Link href="/settings" className="flex-grow overflow-hidden">
                       <div className="flex flex-col justify-center h-full">
                          <p className="truncate text-sm font-semibold text-sidebar-foreground">{displayName || getRoleDisplay()}</p>
@@ -190,50 +180,39 @@ const { toast } = useToast();
                 </Link>
             </div>
         )}
-      </div>
-      <SidebarSeparator />
-      <SidebarContent className="p-2">
-        <SidebarMenu>
-            <div className="px-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider">{t.sidebarSectionMain}</div>
-            <SidebarMenuItem>
-              <Link href="/">
-                <SidebarMenuButton isActive={pathname === '/'} size="sm">
-                  <Home />
-                  <span>{t.sidebarHome}</span>
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <Link href="/services">
-                <SidebarMenuButton isActive={pathname === '/services'} size="sm">
-                  <Briefcase />
-                  <span>{t.sidebarServices}</span>
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <Link href="/dashboard">
-                <SidebarMenuButton isActive={pathname === '/dashboard'} size="sm">
-                  <LayoutDashboard />
-                  <span>{t.sidebarDashboard}</span>
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-            
-        </SidebarMenu>
+</div>
+       <SidebarSeparator />
+       <SidebarContent className="p-2">
+         <SidebarMenu>
+             <div className="px-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider">{t.sidebarSectionMain}</div>
+             <SidebarMenuItem>
+               <Link href="/">
+                 <SidebarMenuButton isActive={pathname === '/'} size="sm">
+                   <Home />
+                   <span>{t.sidebarHome}</span>
+                 </SidebarMenuButton>
+               </Link>
+             </SidebarMenuItem>
+             <SidebarMenuItem>
+               <Link href="/services">
+                 <SidebarMenuButton isActive={pathname === '/services'} size="sm">
+                   <Briefcase />
+                   <span>{t.sidebarServices}</span>
+                 </SidebarMenuButton>
+               </Link>
+             </SidebarMenuItem>
+             <SidebarMenuItem>
+               <Link href="/dashboard">
+                 <SidebarMenuButton isActive={pathname === '/dashboard'} size="sm">
+                   <LayoutDashboard />
+                   <span>{t.sidebarDashboard}</span>
+                 </SidebarMenuButton>
+               </Link>
+             </SidebarMenuItem>
+             
+         </SidebarMenu>
 
-        {(user && !isUserLoading && isProfileLoading && !isOwnerByEmail) && (
-            <SidebarMenu className="mt-4">
-                <div className="px-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider">{t.sidebarSectionManagement}</div>
-                <div className="space-y-1 p-2">
-                    <Skeleton className="h-9 w-full" />
-                    <Skeleton className="h-9 w-full" />
-                    <Skeleton className="h-9 w-full" />
-                </div>
-            </SidebarMenu>
-        )}
-
-        {isAdmin && (
+         {isAdmin && (
             <SidebarMenu className="mt-4">
                 <div className="px-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider">{t.sidebarSectionManagement}</div>
                 <SidebarMenuItem>
