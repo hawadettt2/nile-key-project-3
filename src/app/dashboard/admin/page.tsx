@@ -33,13 +33,15 @@ export default function AdminDashboard() {
   const fetchUsers = useCallback(async () => {
     setIsLoadingUsers(true);
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id,email,display_name,role,status,created_at,last_login_at')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setUsers(data || []);
+      // Use admin API to fetch users (bypasses RLS via service key)
+      const response = await fetch('/api/admin/users');
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to fetch users');
+      }
+      
+      setUsers(result.data || []);
     } catch (error: any) {
       console.error('Failed to fetch users:', error);
       toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to load users' });
@@ -55,8 +57,17 @@ export default function AdminDashboard() {
   const updateUserRole = async (userId: string, newRole: UserRole) => {
     setIsUpdating(userId);
     try {
-      const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', userId);
-      if (error) throw error;
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}` },
+        body: JSON.stringify({ userId, newRole }),
+      });
+      
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Failed to update role');
+      }
+      
       toast({ title: 'Success', description: `User role updated to ${newRole}` });
       fetchUsers();
     } catch (error: any) {
@@ -70,8 +81,17 @@ export default function AdminDashboard() {
   const updateUserStatus = async (userId: string, newStatus: string) => {
     setIsUpdating(userId);
     try {
-      const { error } = await supabase.from('profiles').update({ status: newStatus }).eq('id', userId);
-      if (error) throw error;
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}` },
+        body: JSON.stringify({ userId, newStatus }),
+      });
+      
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Failed to update status');
+      }
+      
       toast({ title: 'Success', description: `User status updated to ${newStatus}` });
       fetchUsers();
     } catch (error: any) {
