@@ -64,6 +64,11 @@ export async function updateSession(request: NextRequest) {
       role = profile.role;
     }
 
+    // Owner bypasses all restrictions
+    if (isOwnerByEmail(user.email)) {
+      return response;
+    }
+
     if (profile?.status && ['suspended', 'rejected'].includes(profile.status)) {
       return NextResponse.redirect(new URL('/unauthorized', request.url));
     }

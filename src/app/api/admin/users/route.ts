@@ -20,18 +20,16 @@ export async function GET(request: NextRequest) {
   const supabase = createAdminClient();
   if (!supabase) return errorResponse('إعدادات Supabase غير مكتملة.');
 
-  const authHeader = request.headers.get('authorization');
+const authHeader = request.headers.get('authorization');
   if (!authHeader) return errorResponse('غير مصرح.', 401);
 
   const token = authHeader.replace('Bearer ', '');
   const { data: { user } } = await supabase.auth.getUser(token);
-
+  
   if (!user) return errorResponse('جلسة غير صالحة.', 401);
 
-  // Check if owner by email (code-level override) or by profile role
-  const isOwner = isOwnerByEmail(user.email);
-
-  if (!isOwner) {
+  // Owner bypasses all checks
+  if (!isOwnerByEmail(user.email)) {
     const { data: reviewer } = await supabase
       .from('profiles')
       .select('role')
@@ -41,6 +39,7 @@ export async function GET(request: NextRequest) {
     if (!reviewer || !['مالك', 'إشراف إداري'].includes(reviewer.role)) {
       return errorResponse('صلاحيات غير كافية.', 403);
     }
+  }
   }
 
   const { data, error } = await supabase

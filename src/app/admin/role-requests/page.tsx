@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/supabase/client';
 import type { UserRole } from '@/lib/supabase-types';
 
 type RoleRequest = {
@@ -43,7 +44,10 @@ export default function RoleRequestsPage() {
   const loadRequests = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/role-requests');
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch('/api/role-requests', {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'تعذر تحميل طلبات الأدوار.');
       setRequests(payload.data || []);
@@ -61,9 +65,13 @@ export default function RoleRequestsPage() {
   const reviewRequest = async (requestId: string, approve: boolean) => {
     setUpdating(requestId);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch('/api/role-requests', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
         body: JSON.stringify({ requestId, approve }),
       });
       const payload = await response.json();
