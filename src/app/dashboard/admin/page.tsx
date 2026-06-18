@@ -33,8 +33,14 @@ export default function AdminDashboard() {
   const fetchUsers = useCallback(async () => {
     setIsLoadingUsers(true);
     try {
+      // Get session for authorization
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No active session');
+      
       // Use admin API to fetch users (bypasses RLS via service key)
-      const response = await fetch('/api/admin/users');
+      const response = await fetch('/api/admin/users', {
+        headers: { 'Authorization': `Bearer ${session.access_token}` },
+      });
       const result = await response.json();
       
       if (!response.ok) {
@@ -48,7 +54,7 @@ export default function AdminDashboard() {
     } finally {
       setIsLoadingUsers(false);
     }
-  }, [toast]);
+  }, [toast, supabase]);
 
   useEffect(() => {
     if (user) fetchUsers();
@@ -57,9 +63,15 @@ export default function AdminDashboard() {
   const updateUserRole = async (userId: string, newRole: UserRole) => {
     setIsUpdating(userId);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No active session');
+      
       const response = await fetch('/api/admin/users', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}` },
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${session.access_token}` 
+        },
         body: JSON.stringify({ userId, newRole }),
       });
       
@@ -81,9 +93,15 @@ export default function AdminDashboard() {
   const updateUserStatus = async (userId: string, newStatus: string) => {
     setIsUpdating(userId);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No active session');
+      
       const response = await fetch('/api/admin/users', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}` },
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${session.access_token}` 
+        },
         body: JSON.stringify({ userId, newStatus }),
       });
       
