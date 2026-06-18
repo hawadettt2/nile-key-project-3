@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader2, Globe, CheckCircle, XCircle, Bookmark } from 'lucide-react';
+import { Loader2, Globe, CheckCircle, XCircle, Bookmark, PlusCircle } from 'lucide-react';
 import { supabase } from '@/supabase/client';
 import { useSupabase } from '@/supabase/provider';
 import { useToast } from '@/hooks/use-toast';
