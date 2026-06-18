@@ -332,11 +332,18 @@ const { toast } = useToast();
                      </SidebarMenuButton>
                    </Link>
                  </SidebarMenuItem>
+             </SidebarMenu>
+         )}
+
+         {/* Trade Sources Section - Available to all authenticated users */}
+         {user && (
+             <SidebarMenu className="mt-4">
+                 <div className="px-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider">مصادر التجارة</div>
                  <SidebarMenuItem>
                    <Link href="/sources">
                      <SidebarMenuButton isActive={pathname === '/sources'} size="sm">
                        <Globe />
-                       <span>مصادر التجارة</span>
+                       <span>مصادر موثوقة</span>
                      </SidebarMenuButton>
                    </Link>
                  </SidebarMenuItem>
@@ -344,11 +351,12 @@ const { toast } = useToast();
                    <Link href="/sites">
                      <SidebarMenuButton isActive={pathname === '/sites'} size="sm">
                        <Globe />
-                       <span>المواقع المهمة</span>
+                       <span>مواقعي المحفوظة</span>
                      </SidebarMenuButton>
                    </Link>
                  </SidebarMenuItem>
              </SidebarMenu>
+         )}
         )}
 
         {!isAdmin && user && (

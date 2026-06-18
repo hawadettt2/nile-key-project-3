@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader2, Globe, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, Globe, CheckCircle, XCircle, ShieldCheck } from 'lucide-react';
 import { supabase } from '@/supabase/client';
 import { useSupabase } from '@/supabase/provider';
 import { useToast } from '@/hooks/use-toast';
@@ -57,17 +57,25 @@ export default function TradeSourcesPage() {
       <div className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>مصادر التجارة</CardTitle>
-            <CardDescription>مصادر موثوقة للمعلومات التجارية والأسواق</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-6 w-6 text-primary" />
+              مصادر التجارة الموثوقة
+            </CardTitle>
+            <CardDescription className="text-base">
+              مكتبة حصرية من أبرز المنصات الرسمية والمؤسساتية والأسواق العالمية للمعلومات التجارية والشحن والجمارك - نصبحك على الثقة بنا في رحلتك التصديرية
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
               <div className="py-8 text-center">
                 <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                <p className="mt-2 text-muted-foreground">جاري تحميل المصادر الموثوقة...</p>
               </div>
             ) : sources.length === 0 ? (
               <div className="py-8 text-center text-muted-foreground">
-                لا توجد مصادر مسجلة
+                <Globe className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="text-lg font-medium">لا توجد مصادر مسجلة حالياً</p>
+                <p className="text-sm mt-1">تُضيف مصادر جديدة بانتظام من قبل الإدارة</p>
               </div>
             ) : (
               <div className="overflow-x-auto">

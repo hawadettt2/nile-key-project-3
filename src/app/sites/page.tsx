@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader2, Globe, CheckCircle, XCircle, PlusCircle } from 'lucide-react';
+import { Loader2, Globe, CheckCircle, XCircle, Bookmark } from 'lucide-react';
 import { supabase } from '@/supabase/client';
 import { useSupabase } from '@/supabase/provider';
 import { useToast } from '@/hooks/use-toast';
@@ -58,8 +58,13 @@ export default function ImportantSitesPage() {
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle>المواقع المهمة</CardTitle>
-                <CardDescription>المواقع والمنصات التي تُهم لأعمالك</CardDescription>
+                <CardTitle className="flex items-center gap-2">
+                  <Bookmark className="h-6 w-6 text-primary" />
+                  مواقعي المحفوظة
+                </CardTitle>
+                <CardDescription>
+                  جميع المواقع والمنصات التي حفظتها للمرجعية السريعة في عملك
+                </CardDescription>
               </div>
               <Button asChild>
                 <a href="/sites/new">
@@ -73,10 +78,13 @@ export default function ImportantSitesPage() {
             {loading ? (
               <div className="py-8 text-center">
                 <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                <p className="mt-2 text-muted-foreground">جاري تحميل المواقع المحفوظة...</p>
               </div>
             ) : sites.length === 0 ? (
               <div className="py-8 text-center text-muted-foreground">
-                لا توجد مواقع مسجلة
+                <Globe className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="text-lg font-medium">لم تقم بحفظ أي مواقع بعد</p>
+                <p className="text-sm mt-1">ابدأ بإضافة المواقع الهامة لك للوصول السريع إليها</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
