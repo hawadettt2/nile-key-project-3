@@ -10,39 +10,37 @@ import { useSupabase } from '@/supabase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 
-type Supplier = {
+type Customer = {
   id: string;
   name: string;
-  contact_person: string;
   email: string;
   phone: string;
-  address: string;
-  governorate: string;
-  is_nfsa_whitelisted: boolean;
+  company_name: string;
+  country: string;
   created_at: string;
 };
 
-export default function SuppliersPage() {
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+export default function CustomersPage() {
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useSupabase();
   const { toast } = useToast();
 
-  const loadSuppliers = async () => {
+  const loadCustomers = async () => {
     setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('No active session');
 
-      const response = await fetch('/api/suppliers', {
+      const response = await fetch('/api/customers', {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || 'فشل تحميل الموردين');
-      setSuppliers(payload.data || []);
+      if (!response.ok) throw new Error(payload.error || 'فشل تحميل العملاء');
+      setCustomers(payload.data || []);
     } catch (error: any) {
-      console.error('Failed to fetch suppliers:', error);
+      console.error('Failed to fetch customers:', error);
       toast({ variant: 'destructive', title: 'خطأ', description: error.message });
     } finally {
       setLoading(false);
@@ -50,7 +48,7 @@ export default function SuppliersPage() {
   };
 
   useEffect(() => {
-    if (user) loadSuppliers();
+    if (user) loadCustomers();
   }, [user]);
 
   return (
@@ -59,13 +57,13 @@ export default function SuppliersPage() {
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle>الموردون</CardTitle>
-              <CardDescription>إدارة الموردين وعرض معلوماتهم</CardDescription>
+              <CardTitle>العملاء</CardTitle>
+              <CardDescription>إدارة العملاء وعرض معلوماتهم</CardDescription>
             </div>
             <Button asChild>
-              <a href="/suppliers/new">
+              <a href="/customers/new">
                 <PlusCircle className="h-4 w-4 mr-2" />
-                مورد جديد
+                عميل جديد
               </a>
             </Button>
           </div>
@@ -75,42 +73,36 @@ export default function SuppliersPage() {
             <div className="py-8 text-center">
               <Loader2 className="h-6 w-6 animate-spin mx-auto" />
             </div>
-          ) : suppliers.length === 0 ? (
+          ) : customers.length === 0 ? (
             <div className="py-8 text-center text-muted-foreground">
-              لا توجد موردين مسجلين
+              لا توجد عملاء مسجلين
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>الاسم</TableHead>
                     <TableHead>اسم الشركة</TableHead>
-                    <TableHead>جهة الاتصال</TableHead>
                     <TableHead>البريد</TableHead>
                     <TableHead>الهاتف</TableHead>
-                    <TableHead>المحافظة</TableHead>
-                    <TableHead>القائمة البيضاء</TableHead>
+                    <TableHead>البلد</TableHead>
                     <TableHead>تاريخ التسجيل</TableHead>
                     <TableHead>الإجراءات</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {suppliers.map((supplier) => (
-                    <TableRow key={supplier.id}>
-                      <TableCell className="font-medium">{supplier.name}</TableCell>
-                      <TableCell>{supplier.contact_person}</TableCell>
-                      <TableCell>{supplier.email}</TableCell>
-                      <TableCell>{supplier.phone}</TableCell>
-                      <TableCell>{supplier.governorate}</TableCell>
-                      <TableCell>
-                        <Badge variant={supplier.is_nfsa_whitelisted ? 'secondary' : 'outline'}>
-                          {supplier.is_nfsa_whitelisted ? 'نعم' : 'لا'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{new Date(supplier.created_at).toLocaleDateString('ar-EG')}</TableCell>
+                  {customers.map((customer) => (
+                    <TableRow key={customer.id}>
+                      <TableCell className="font-medium">{customer.name}</TableCell>
+                      <TableCell>{customer.company_name}</TableCell>
+                      <TableCell>{customer.email}</TableCell>
+                      <TableCell>{customer.phone}</TableCell>
+                      <TableCell>{customer.country}</TableCell>
+                      <TableCell>{new Date(customer.created_at).toLocaleDateString('ar-EG')}</TableCell>
                       <TableCell>
                         <Button size="sm" variant="outline" asChild>
-                          <a href={`/suppliers/${supplier.id}`}>
+                          <a href={`/customers/${customer.id}`}>
                             <Edit className="h-3 w-3" />
                           </a>
                         </Button>
