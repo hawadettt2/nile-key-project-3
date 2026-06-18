@@ -1,7 +1,7 @@
 'use client';
 
 import Link from "next/link";
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { usePathname } from "next/navigation";
 import {
   Sidebar,
@@ -52,31 +52,48 @@ const supportedLanguages = [
 export function AppSidebar() {
   const { language, setLanguage, t } = useLanguage();
   const { user, isLoading: isUserLoading, signOut } = useSupabase();
-  const { toast } = useToast();
+const { toast } = useToast();
   const pathname = usePathname();
 
-// CRITICAL OWNER IDENTITY - Check by email in code level
+  // CRITICAL OWNER IDENTITY - Check by email in code level
   const isOwnerByEmail = checkOwnerByEmail(user?.email);
 
-   const userProfileRef = useMemo(() => {
-     if (!user) return null;
-     return { tableName: 'profiles', id: user.id };
-   }, [user]);
-
-   // Use any to avoid TypeScript errors with profile fields
-   const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(
-     supabase,
-     'profiles',
-     user?.id
-   );
-
-    // For owner, use user metadata; for others, load profile via hook
-   const displayName = isOwnerByEmail 
-     ? userProfile?.display_name || user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'مالك'
-     : userProfile?.display_name || user?.user_metadata?.display_name || '';
+  // Fetch profile via API to bypass RLS
+  const [sidebarProfile, setSidebarProfile] = useState<any>(null);
   
-  // Updated to use new role system
-  const hasAdminRole = userProfile?.role && ['مالك', 'إشراف إداري', 'موظف'].includes(userProfile.role);
+  useEffect(() => {
+    if (!user) return;
+    const fetchProfile = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const response = await fetch('/api/profile', {
+          headers: { Authorization: `Bearer ${session?.access_token}` },
+        });
+        const result = await response.json();
+        if (response.ok) {
+          setSidebarProfile(result.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch profile:', error);
+      }
+    };
+    fetchProfile();
+  }, [user]);
+
+  const userProfileRef = useMemo(() => {
+    if (!user) return null;
+    return { tableName: 'profiles', id: user.id };
+  }, [user]);
+
+// Use any to avoid TypeScript errors with profile fields
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(
+    supabase,
+    'profiles',
+    user?.id
+  );
+
+  // For admin check, use sidebarProfile from API
+  const hasAdminRole = sidebarProfile?.role && ['مالك', 'إشراف إداري', 'موظف'].includes(sidebarProfile.role);
   const isAdmin = isOwnerByEmail || hasAdminRole;
 
   const handleLogout = async () => {
