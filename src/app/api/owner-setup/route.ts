@@ -17,8 +17,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if auth user exists first
-    const { data: authUsers } = await adminSupabase.auth.admin.listUsers();
-    const existingAuthUser = authUsers?.users?.find(u => u.email === 'hawadettt2@gmail.com');
+    const { data: authUsers, error: listErr } = await adminSupabase.auth.admin.listUsers();
+    const existingAuthUser = authUsers?.users?.find((u: any) => u.email === 'hawadettt2@gmail.com');
 
     let userId: string | undefined;
 
