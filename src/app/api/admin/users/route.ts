@@ -28,8 +28,8 @@ const authHeader = request.headers.get('authorization');
   
   if (!user) return errorResponse('جلسة غير صالحة.', 401);
 
-  // Owner bypasses all checks
-  if (!isOwnerByEmail(user.email)) {
+// Owner bypasses all checks
+   if (!isOwnerByEmail(user.email)) {
     const { data: reviewer } = await supabase
       .from('profiles')
       .select('role')
@@ -39,7 +39,6 @@ const authHeader = request.headers.get('authorization');
     if (!reviewer || !['مالك', 'إشراف إداري'].includes(reviewer.role)) {
       return errorResponse('صلاحيات غير كافية.', 403);
     }
-  }
   }
 
   const { data, error } = await supabase
