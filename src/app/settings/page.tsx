@@ -9,7 +9,6 @@ import { Loader2, Save, User } from 'lucide-react';
 import { supabase } from '@/supabase/client';
 import { useSupabase } from '@/supabase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { useLanguage } from '@/context/language-provider';
 
 export default function SettingsPage() {
   const [displayName, setDisplayName] = useState('');
@@ -19,23 +18,21 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const { user } = useSupabase();
   const { toast } = useToast();
-  const { language, setLanguage, t } = useLanguage();
 
   useEffect(() => {
     const loadProfile = async () => {
       if (!user) return;
       setLoading(true);
       try {
-        const { data } = await supabase
-          .from('profiles')
-          .select('display_name, phone, country')
-          .eq('id', user.id)
-          .single();
-
-        if (data) {
-          setDisplayName(data.display_name || '');
-          setPhone(data.phone || '');
-          setCountry(data.country || '');
+        const { data: { session } } = await supabase.auth.getSession();
+        const response = await fetch('/api/profile', {
+          headers: { Authorization: `Bearer ${session?.access_token}` },
+        });
+        const result = await response.json();
+        if (response.ok && result.data) {
+          setDisplayName(result.data.display_name || '');
+          setPhone(result.data.phone || '');
+          setCountry(result.data.country || '');
         }
       } catch (error: any) {
         console.error('Failed to load profile:', error);
@@ -51,17 +48,18 @@ export default function SettingsPage() {
     setSaving(true);
 
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          display_name: displayName,
-          phone,
-          country,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', user.id);
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch('/api/profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ displayName, phone, country }),
+      });
 
-      if (error) throw error;
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'فشل حفظ الإعدادات');
 
       toast({ title: 'تم الحفظ', description: 'تم حفظ الإعدادات بنجاح' });
     } catch (error: any) {
