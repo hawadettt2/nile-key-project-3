@@ -316,23 +316,39 @@ const { toast } = useToast();
                   </Collapsible>
                 </SidebarMenuItem>
 
-                <SidebarMenuItem>
-                  <Link href="/dashboard/admin">
-                    <SidebarMenuButton isActive={pathname === '/dashboard/admin'} size="sm">
-                      <Shield />
-                      <span>{t.sidebarAdminDashboard}</span>
-                    </SidebarMenuButton>
-                  </Link>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <Link href="/admin/role-requests">
-                    <SidebarMenuButton isActive={pathname === '/admin/role-requests'} size="sm">
-                      <Shield />
-                      <span>طلبات الأدوار</span>
-                    </SidebarMenuButton>
-                  </Link>
-                </SidebarMenuItem>
-            </SidebarMenu>
+<SidebarMenuItem>
+                   <Link href="/dashboard/admin">
+                     <SidebarMenuButton isActive={pathname === '/dashboard/admin'} size="sm">
+                       <Shield />
+                       <span>{t.sidebarAdminDashboard}</span>
+                     </SidebarMenuButton>
+                   </Link>
+                 </SidebarMenuItem>
+                 <SidebarMenuItem>
+                   <Link href="/admin/role-requests">
+                     <SidebarMenuButton isActive={pathname === '/admin/role-requests'} size="sm">
+                       <Shield />
+                       <span>طلبات الأدوار</span>
+                     </SidebarMenuButton>
+                   </Link>
+                 </SidebarMenuItem>
+                 <SidebarMenuItem>
+                   <Link href="/sources">
+                     <SidebarMenuButton isActive={pathname === '/sources'} size="sm">
+                       <Globe />
+                       <span>مصادر التجارة</span>
+                     </SidebarMenuButton>
+                   </Link>
+                 </SidebarMenuItem>
+                 <SidebarMenuItem>
+                   <Link href="/sites">
+                     <SidebarMenuButton isActive={pathname === '/sites'} size="sm">
+                       <Globe />
+                       <span>المواقع المهمة</span>
+                     </SidebarMenuButton>
+                   </Link>
+                 </SidebarMenuItem>
+             </SidebarMenu>
         )}
 
         {!isAdmin && user && (
