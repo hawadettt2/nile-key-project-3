@@ -347,7 +347,7 @@ const { toast } = useToast();
                      </SidebarMenuButton>
                    </Link>
                  </SidebarMenuItem>
-                 <SidebarMenuItem>
+<SidebarMenuItem>
                    <Link href="/sites">
                      <SidebarMenuButton isActive={pathname === '/sites'} size="sm">
                        <Globe />
@@ -357,22 +357,19 @@ const { toast } = useToast();
                  </SidebarMenuItem>
              </SidebarMenu>
          )}
-        )}
 
-        {!isAdmin && user && (
-            <SidebarMenu className="mt-4">
-                <div className="px-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider">{t.sidebarSectionManagement}</div>
-                <SidebarMenuItem>
-                  <Link href="/settings">
-                    <SidebarMenuButton isActive={pathname === '/settings'} size="sm">
-                      <Settings />
-                      <span>{t.sidebarSettings}</span>
-                    </SidebarMenuButton>
-                  </Link>
-                </SidebarMenuItem>
-            </SidebarMenu>
-        )}
-      </SidebarContent>
+<SidebarMenu className="mt-4">
+              <div className="px-2 text-xs font-semibold uppercase text-muted-foreground tracking-wider">{t.sidebarSectionManagement}</div>
+              <SidebarMenuItem>
+                <Link href="/settings">
+                  <SidebarMenuButton isActive={pathname === '/settings'} size="sm">
+                    <Settings />
+                    <span>{t.sidebarSettings}</span>
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+          </SidebarMenu>
+       </SidebarContent>
       <SidebarFooter className="p-2">
         <div className="px-2 text-xs text-muted-foreground">
           Nile Key v3 © {new Date().getFullYear()}
