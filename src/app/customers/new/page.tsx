@@ -10,6 +10,7 @@ import { Loader2, Save } from 'lucide-react';
 import { supabase } from '@/supabase/client';
 import { useSupabase } from '@/supabase/provider';
 import { useToast } from '@/hooks/use-toast';
+import AppLayout from '@/app/app-layout';
 
 export default function NewCustomerPage() {
   const [name, setName] = useState('');
@@ -58,40 +59,42 @@ export default function NewCustomerPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>إضافة عميل جديد</CardTitle>
-          <CardDescription>أدخل بيانات العميل الجديد</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">الاسم</Label>
-              <Input id="name" value={name} onChange={e => setName(e.target.value)} required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">البريد الإلكتروني</Label>
-              <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">الهاتف</Label>
-              <Input id="phone" value={phone} onChange={e => setPhone(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="companyName">اسم الشركة</Label>
-              <Input id="companyName" value={companyName} onChange={e => setCompanyName(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="country">البلد</Label>
-              <Input id="country" value={country} onChange={e => setCountry(e.target.value)} />
-            </div>
-            <Button type="submit" disabled={loading}>
-              {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> جاري الحفظ</> : <><Save className="h-4 w-4 mr-2" /> حفظ العميل</>}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+    <AppLayout>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>إضافة عميل جديد</CardTitle>
+            <CardDescription>أدخل بيانات العميل الجديد</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">الاسم</Label>
+                <Input id="name" value={name} onChange={e => setName(e.target.value)} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">البريد الإلكتروني</Label>
+                <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">الهاتف</Label>
+                <Input id="phone" value={phone} onChange={e => setPhone(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="companyName">اسم الشركة</Label>
+                <Input id="companyName" value={companyName} onChange={e => setCompanyName(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="country">البلد</Label>
+                <Input id="country" value={country} onChange={e => setCountry(e.target.value)} />
+              </div>
+              <Button type="submit" disabled={loading}>
+                {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> جاري الحفظ</> : <><Save className="h-4 w-4 mr-2" /> حفظ العميل</>}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    </AppLayout>
   );
 }

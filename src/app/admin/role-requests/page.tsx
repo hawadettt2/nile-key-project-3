@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/supabase/client';
 import type { UserRole } from '@/lib/supabase-types';
+import AppLayout from '@/app/app-layout';
 
 type RoleRequest = {
   id: string;
@@ -93,8 +94,9 @@ export default function RoleRequestsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <Card>
+    <AppLayout>
+      <div className="space-y-6">
+        <Card>
         <CardHeader>
           <CardTitle>طلبات تغيير الأدوار</CardTitle>
           <CardDescription>
@@ -164,5 +166,6 @@ export default function RoleRequestsPage() {
         </CardContent>
       </Card>
     </div>
+  </AppLayout>
   );
 }

@@ -104,6 +104,7 @@ export interface Database {
           created_at?: string;
         };
         Update: never;
+        Relationships: [];
       };
       customers: {
         Row: {
@@ -139,6 +140,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       shipments: {
         Row: {
@@ -192,6 +194,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       suppliers: {
         Row: {
@@ -233,6 +236,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       important_sites: {
         Row: {
@@ -265,6 +269,7 @@ export interface Database {
           icon?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       site_categories: {
         Row: {
@@ -291,7 +296,8 @@ export interface Database {
           icon?: string | null;
           created_at?: string;
         };
-};
+        Relationships: [];
+      };
         employee_tasks: {
         Row: {
           id: string;
@@ -335,6 +341,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       hs_codes: {
         Row: {
@@ -379,6 +386,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       export_opportunities: {
         Row: {
@@ -447,6 +455,70 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
+      };
+      user_roles: {
+        Row: {
+          id: string;
+          profile_id: string;
+          role: UserRole;
+          assigned_at: string;
+          is_current: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          profile_id: string;
+          role: UserRole;
+          assigned_at?: string;
+          is_current?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          profile_id?: string;
+          role?: UserRole;
+          assigned_at?: string;
+          is_current?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      role_change_requests: {
+        Row: {
+          id: string;
+          profile_id: string;
+          requested_role: UserRole;
+          status: 'pending' | 'approved' | 'rejected';
+          reason: string | null;
+          reviewer_id: string | null;
+          reviewed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          profile_id: string;
+          requested_role: UserRole;
+          status?: 'pending' | 'approved' | 'rejected';
+          reason?: string | null;
+          reviewer_id?: string | null;
+          reviewed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          profile_id?: string;
+          requested_role?: UserRole;
+          status?: 'pending' | 'approved' | 'rejected';
+          reason?: string | null;
+          reviewer_id?: string | null;
+          reviewed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
       supplier_ratings: {
         Row: {
@@ -488,6 +560,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       export_alerts: {
         Row: {
@@ -547,6 +620,7 @@ export interface Database {
           created_at?: string;
           read_at?: string | null;
         };
+        Relationships: [];
       };
     };
     Views: {

@@ -57,21 +57,27 @@ export async function getUserAlerts(filters?: {
 }
 
 export async function markAlertAsRead(alertId: string) {
-  const { error } = await supabase
-    .from('export_alerts')
-    .update({ is_read: true, read_at: new Date().toISOString() })
-    .eq('id', alertId);
+  const response = await fetch('/api/export/alerts', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ alertId, is_read: true }),
+  });
 
-  if (error) throw error;
+  if (!response.ok) {
+    throw new Error(`Failed to mark alert as read: ${response.statusText}`);
+  }
 }
 
 export async function dismissAlert(alertId: string) {
-  const { error } = await supabase
-    .from('export_alerts')
-    .update({ is_dismissed: true })
-    .eq('id', alertId);
+  const response = await fetch('/api/export/alerts', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ alertId, is_dismissed: true }),
+  });
 
-  if (error) throw error;
+  if (!response.ok) {
+    throw new Error(`Failed to dismiss alert: ${response.statusText}`);
+  }
 }
 
 /**

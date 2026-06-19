@@ -1,79 +1,101 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { isOwnerByEmail } from '@/lib/access-control';
+import { ApiError, getActor, requireActiveActor } from '@/lib/api-auth';
+import type { UserRole } from '@/lib/supabase-types';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SHIPMENT_ADMIN_ROLES: UserRole[] = ['مالك', 'إشراف إداري', 'موظف'];
 
-function createAdminClient() {
-  if (!supabaseUrl || !serviceRoleKey) return null;
-  return createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false },
-  });
+function errorResponse(error: ApiError) {
+  return NextResponse.json({ success: false, error: error.message }, { status: error.status });
+}
+
+function getOptionalString(body: unknown, key: string) {
+  const value = (body as Record<string, unknown>)?.[key];
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function getOptionalNumber(body: unknown, key: string) {
+  const value = (body as Record<string, unknown>)?.[key];
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const numberValue = Number(value);
+    return Number.isFinite(numberValue) ? numberValue : null;
+  }
+  return null;
 }
 
 export async function GET(request: NextRequest) {
-  const supabase = createAdminClient();
-  if (!supabase) {
-    return NextResponse.json({ success: false, error: 'إعدادات Supabase غير مكتملة.' }, { status: 500 });
+  try {
+    const { supabase, user, profile } = await getActor(request);
+    requireActiveActor(profile);
+
+    let query = supabase.from('shipments').select('*');
+
+    if (!requireRoleSilently(profile, SHIPMENT_ADMIN_ROLES)) {
+      query = query.eq('user_id', user.id);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
+
+    if (error) throw new ApiError(500, error.message);
+
+    return NextResponse.json({ success: true, data });
+  } catch (error) {
+    return errorResponse(error instanceof ApiError ? error : new ApiError(500, 'حدث خطأ غير متوقع.'));
   }
+}
 
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader) {
-    return NextResponse.json({ success: false, error: 'غير مصرح.' }, { status: 401 });
-  }
+export async function POST(request: NextRequest) {
+  try {
+    const { supabase, user, profile } = await getActor(request);
+    requireActiveActor(profile);
 
-  const token = authHeader.replace('Bearer ', '');
-  const { data: { user } } = await supabase.auth.getUser(token);
+    const body = await request.json();
+    const shipment_type = getOptionalString(body, 'shipment_type');
+    const container_number = getOptionalString(body, 'container_number');
+    const tracking_number = getOptionalString(body, 'tracking_number');
+    const acid_number = getOptionalString(body, 'acid_number');
+    const carrier_details = getOptionalString(body, 'carrier_details');
+    const customer_id = getOptionalString(body, 'customer_id');
+    const status = getOptionalString(body, 'status') || 'processing';
+    const transport_type = getOptionalString(body, 'transport_type');
+    const weight_kg = getOptionalNumber(body, 'weight_kg');
+    const quantity = getOptionalNumber(body, 'quantity');
+    const price = getOptionalNumber(body, 'price');
+    const is_temperature_controlled = typeof body?.is_temperature_controlled === 'boolean' ? body.is_temperature_controlled : false;
 
-  if (!user) {
-    return NextResponse.json({ success: false, error: 'جلسة غير صالحة.' }, { status: 401 });
-  }
+    if (!shipment_type) throw new ApiError(400, 'نوع الشحنة مطلوب.');
+    if (!tracking_number) throw new ApiError(400, 'رقم التتبع مطلوب.');
+    if (!customer_id) throw new ApiError(400, 'العميل مطلوب.');
+    if (price === null || price <= 0) throw new ApiError(400, 'السعر يجب أن يكون أكبر من صفر.');
 
-  // Owner bypasses all checks
-  if (isOwnerByEmail(user.email)) {
-    // Fetch all shipments for owner
     const { data, error } = await supabase
       .from('shipments')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .insert({
+        user_id: user.id,
+        customer_id,
+        shipment_type,
+        weight_kg,
+        quantity,
+        price,
+        container_number,
+        tracking_number,
+        acid_number,
+        carrier_details,
+        transport_type,
+        status,
+        is_temperature_controlled,
+      })
+      .select()
+      .single();
 
-    if (error) {
-      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-    }
+    if (error) throw new ApiError(500, error.message);
+
     return NextResponse.json({ success: true, data });
+  } catch (error) {
+    return errorResponse(error instanceof ApiError ? error : new ApiError(500, 'حدث خطأ غير متوقع.'));
   }
+}
 
-  // Get user role
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  // Admins see all shipments
-  if (profile?.role && ['مالك', 'إشراف إداري', 'موظف'].includes(profile.role)) {
-    const { data, error } = await supabase
-      .from('shipments')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-    }
-    return NextResponse.json({ success: true, data });
-  }
-
-  // Regular users see own shipments
-  const { data, error } = await supabase
-    .from('shipments')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
-
-  return NextResponse.json({ success: true, data });
+function requireRoleSilently(profile: { role: UserRole | null; email: string | null }, roles: UserRole[]) {
+  return Boolean(profile.role && roles.includes(profile.role));
 }

@@ -1,20 +1,8 @@
-
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminSupabaseClient, ApiError } from '@/lib/api-auth';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-function createAdminClient() {
-  if (!supabaseUrl || !serviceRoleKey) {
-    return null;
-  }
-
-  return createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      persistSession: false,
-    },
-  });
+function errorResponse(error: ApiError) {
+  return NextResponse.json({ success: false, error: error.message }, { status: error.status });
 }
 
 export async function POST(request: NextRequest) {
@@ -26,20 +14,10 @@ export async function POST(request: NextRequest) {
       ? body.displayName.trim()
       : email.split('@')[0] || 'New User';
 
-    if (!email || !password) {
-      return NextResponse.json(
-        { error: 'Email and password are required' },
-        { status: 400 }
-      );
-    }
+    if (!email || !password) throw new ApiError(400, 'Email and password are required');
+    if (password.length < 8) throw new ApiError(400, 'Password must be at least 8 characters');
 
-    const adminSupabase = createAdminClient();
-    if (!adminSupabase) {
-      return NextResponse.json(
-        { error: 'Server configuration missing SUPABASE_SERVICE_ROLE_KEY' },
-        { status: 500 }
-      );
-    }
+    const adminSupabase = createAdminSupabaseClient();
 
     const { data, error } = await adminSupabase.auth.admin.createUser({
       email,
@@ -52,34 +30,21 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    if (error) {
-      console.error('Admin createUser error:', error);
-      return NextResponse.json(
-        { error: error.message || JSON.stringify(error) },
-        { status: 400 }
-      );
-    }
+    if (error) throw new ApiError(400, error.message || JSON.stringify(error));
 
-    // Ensure profile exists (trigger may not have fired)
     const { error: profileErr } = await adminSupabase.from('profiles').upsert({
       id: data.user.id,
       email: data.user.email,
       display_name: displayName,
       role: 'مستخدم مسجل',
       status: 'active',
-      email_verified: true,
+      email_verified: false,
     }, { onConflict: 'id' });
 
-    if (profileErr) {
-      console.error('Profile upsert error:', profileErr);
-    }
+    if (profileErr) throw new ApiError(500, profileErr.message);
 
     return NextResponse.json({ success: true, user: data.user });
-  } catch (error: any) {
-    console.error('Registration route error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return errorResponse(error instanceof ApiError ? error : new ApiError(500, 'Internal server error'));
   }
 }

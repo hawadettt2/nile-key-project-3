@@ -1,7 +1,9 @@
-
 'use client';
 
 import { useState, useEffect } from "react";
+import { format } from "date-fns";
+import { ar } from "date-fns/locale/ar";
+import { enUS } from "date-fns/locale/en-US";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -11,23 +13,54 @@ import { useSupabase } from "@/supabase/provider";
 import { supabase } from "@/supabase/client";
 import { useLanguage } from "@/context/language-provider";
 
+type Customer = { id: string; name: string; company_name?: string | null };
+type Shipment = {
+  id: string;
+  created_at: string;
+  shipment_type: string;
+  customer_id?: string | null;
+  customer?: string;
+  status: string;
+  acid_number?: string | null;
+  tracking_number?: string | null;
+  price?: number | null;
+};
+
 export function ShipmentsDashboard() {
   const { language, t } = useLanguage();
-  
-  type Shipment = {
-    id: string;
-    created_at: string;
-    shipment_type: string;
-    customer: string;
-    status: string;
-    acid_number: string;
-    tracking_number: string;
-    price: number;
-  };
 
   const { user, isLoading: isUserLoading } = useSupabase();
   const [shipments, setShipments] = useState<Shipment[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoadingShipments, setIsLoadingShipments] = useState(true);
+  const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
+
+  useEffect(() => {
+    const loadCustomers = async () => {
+      if (!user) {
+        setCustomers([]);
+        return;
+      }
+      setIsLoadingCustomers(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error('No active session');
+        const response = await fetch('/api/customers', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || 'فشل تحميل العملاء');
+        setCustomers(payload.data || []);
+      } catch (error) {
+        console.error('Error fetching customers:', error);
+        setCustomers([]);
+      } finally {
+        setIsLoadingCustomers(false);
+      }
+    };
+
+    loadCustomers();
+  }, [user]);
 
   useEffect(() => {
     const fetchShipments = async () => {
@@ -54,7 +87,14 @@ export function ShipmentsDashboard() {
     fetchShipments();
   }, [user]);
 
-  if (isUserLoading) {
+  const customerMap = new Map(customers.map((customer) => [customer.id, customer.company_name || customer.name]));
+
+  const getCustomerName = (shipment: Shipment) => {
+    if (shipment.customer) return shipment.customer;
+    return shipment.customer_id ? customerMap.get(shipment.customer_id) || shipment.customer_id : '—';
+  };
+
+  if (isUserLoading || isLoadingCustomers) {
       return <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
   }
 
@@ -100,12 +140,12 @@ export function ShipmentsDashboard() {
                     {shipments.map((shipment) => (
                       <TableRow key={shipment.id}>
                         <TableCell className="font-medium">{shipment.shipment_type}</TableCell>
-                        <TableCell>{shipment.customer}</TableCell>
+                        <TableCell>{getCustomerName(shipment)}</TableCell>
                         <TableCell>{shipment.created_at ? format(new Date(shipment.created_at), "PPP", { locale: language === 'ar' ? ar : enUS }) : 'N/A'}</TableCell>
                         <TableCell><Badge variant={shipment.status === t.shipmentStatusOption5 ? 'default' : 'secondary'}>{shipment.status}</Badge></TableCell>
-                        <TableCell>{shipment.acid_number}</TableCell>
-                        <TableCell>{shipment.tracking_number}</TableCell>
-                        <TableCell className="text-left">${shipment.price.toLocaleString()}</TableCell>
+                        <TableCell>{shipment.acid_number || '—'}</TableCell>
+                        <TableCell>{shipment.tracking_number || '—'}</TableCell>
+                        <TableCell className="text-left">{shipment.price != null ? `$${shipment.price.toLocaleString()}` : '—'}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -124,5 +164,3 @@ export function ShipmentsDashboard() {
       </div>
   );
 }
-
-    

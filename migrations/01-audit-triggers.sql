@@ -3,17 +3,28 @@
 -- Adds automatic audit logging for all data changes
 -- =====================================================
 
--- =====================================================
--- Audit Logging Function
--- =====================================================
+CREATE OR REPLACE FUNCTION public.prevent_audit_log_changes()
+RETURNS TRIGGER AS $$
+BEGIN
+  RAISE EXCEPTION 'Audit logs are immutable and cannot be modified or deleted';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS prevent_audit_log_updates ON public.audit_logs;
+CREATE TRIGGER prevent_audit_log_updates
+  BEFORE UPDATE OR DELETE ON public.audit_logs
+  FOR EACH ROW EXECUTE FUNCTION public.prevent_audit_log_changes();
+
 CREATE OR REPLACE FUNCTION public.log_audit_changes()
 RETURNS TRIGGER AS $$
 DECLARE
   client_ip INET;
   client_user_agent TEXT;
+  request_headers JSONB;
 BEGIN
   client_ip := inet_client_addr();
-  client_user_agent := current_setting('request.headers', true)::jsonb->>'user-agent';
+  request_headers := current_setting('request.headers', true)::jsonb;
+  client_user_agent := request_headers->>'user-agent';
 
   IF TG_OP = 'INSERT' THEN
     INSERT INTO public.audit_logs (user_id, action, table_name, record_id, new_data, ip_address, user_agent)
@@ -32,12 +43,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- =====================================================
--- Audit Triggers on all tables
--- =====================================================
 DROP TRIGGER IF EXISTS audit_profiles_changes ON public.profiles;
 CREATE TRIGGER audit_profiles_changes
   AFTER INSERT OR UPDATE OR DELETE ON public.profiles
+  FOR EACH ROW EXECUTE FUNCTION public.log_audit_changes();
+
+DROP TRIGGER IF EXISTS audit_trade_sources_changes ON public.trade_sources;
+CREATE TRIGGER audit_trade_sources_changes
+  AFTER INSERT OR UPDATE OR DELETE ON public.trade_sources
   FOR EACH ROW EXECUTE FUNCTION public.log_audit_changes();
 
 DROP TRIGGER IF EXISTS audit_shipments_changes ON public.shipments;
@@ -63,6 +76,16 @@ CREATE TRIGGER audit_important_sites_changes
 DROP TRIGGER IF EXISTS audit_site_categories_changes ON public.site_categories;
 CREATE TRIGGER audit_site_categories_changes
   AFTER INSERT OR UPDATE OR DELETE ON public.site_categories
+  FOR EACH ROW EXECUTE FUNCTION public.log_audit_changes();
+
+DROP TRIGGER IF EXISTS audit_nfsa_whitelist_changes ON public.nfsa_whitelist;
+CREATE TRIGGER audit_nfsa_whitelist_changes
+  AFTER INSERT OR UPDATE OR DELETE ON public.nfsa_whitelist
+  FOR EACH ROW EXECUTE FUNCTION public.log_audit_changes();
+
+DROP TRIGGER IF EXISTS audit_predictive_analytics_changes ON public.predictive_analytics;
+CREATE TRIGGER audit_predictive_analytics_changes
+  AFTER INSERT OR UPDATE OR DELETE ON public.predictive_analytics
   FOR EACH ROW EXECUTE FUNCTION public.log_audit_changes();
 
 DROP TRIGGER IF EXISTS audit_employee_tasks_changes ON public.employee_tasks;

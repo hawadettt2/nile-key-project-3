@@ -1,97 +1,100 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { isOwnerByEmail } from '@/lib/access-control';
+import { ApiError, getActor, requireActiveActor, requireRole } from '@/lib/api-auth';
+import { canModifyRole, canModifyStatus, UserStatusSchema, UserRoleSchema } from '@/lib/rbac-validation';
+import type { UserRole } from '@/lib/supabase-types';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-function createAdminClient() {
-  if (!supabaseUrl || !serviceRoleKey) return null;
-  return createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false },
-  });
+function errorResponse(error: ApiError) {
+  return NextResponse.json({ success: false, error: error.message }, { status: error.status });
 }
 
-function errorResponse(message: string, status = 500) {
-  return NextResponse.json({ success: false, error: message }, { status });
+async function fetchTargetProfile(supabase: any, userId: string) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, role, status')
+    .eq('id', userId)
+    .single();
+
+  if (error) throw new ApiError(500, error.message);
+  if (!data) throw new ApiError(404, 'المستخدم غير موجود.');
+
+  return data;
 }
 
 export async function GET(request: NextRequest) {
-  const supabase = createAdminClient();
-  if (!supabase) return errorResponse('إعدادات Supabase غير مكتملة.');
+  try {
+    const { supabase, profile } = await getActor(request);
+    requireActiveActor(profile);
+    requireRole(profile, ['مالك', 'إشراف إداري']);
 
-const authHeader = request.headers.get('authorization');
-  if (!authHeader) return errorResponse('غير مصرح.', 401);
-
-  const token = authHeader.replace('Bearer ', '');
-  const { data: { user } } = await supabase.auth.getUser(token);
-  
-  if (!user) return errorResponse('جلسة غير صالحة.', 401);
-
-// Owner bypasses all checks
-   if (!isOwnerByEmail(user.email)) {
-    const { data: reviewer } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
+      .select('id,email,display_name,role,status,created_at,last_login_at')
+      .order('created_at', { ascending: false });
 
-    if (!reviewer || !['مالك', 'إشراف إداري'].includes(reviewer.role)) {
-      return errorResponse('صلاحيات غير كافية.', 403);
-    }
+    if (error) throw new ApiError(500, error.message);
+
+    return NextResponse.json({ success: true, data });
+  } catch (error) {
+    return errorResponse(error instanceof ApiError ? error : new ApiError(500, 'حدث خطأ غير متوقع.'));
   }
-
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id,email,display_name,role,status,created_at,last_login_at')
-    .order('created_at', { ascending: false });
-
-  if (error) return errorResponse(error.message, 500);
-
-  return NextResponse.json({ success: true, data });
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = createAdminClient();
-  if (!supabase) return errorResponse('إعدادات Supabase غير مكتملة.');
+  try {
+    const { supabase, user, profile } = await getActor(request);
+    requireActiveActor(profile);
+    requireRole(profile, ['مالك', 'إشراف إداري']);
 
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader) return errorResponse('غير مصرح.', 401);
+    const body = await request.json();
+    const userId = typeof body?.userId === 'string' ? body.userId : '';
 
-  const token = authHeader.replace('Bearer ', '');
-  const { data: { user } } = await supabase.auth.getUser(token);
+    if (!userId) throw new ApiError(400, 'userId مطلوب.');
+    if (userId === user.id && profile.role !== 'مالك') {
+      throw new ApiError(403, 'لا يمكن تعديل صلاحيات حسابك إلا بواسطة المالك.');
+    }
 
-  if (!user) return errorResponse('جلسة غير صالحة.', 401);
+    const targetProfile = await fetchTargetProfile(supabase, userId);
+    const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
-  const body = await request.json();
-  const { userId, newRole, newStatus } = body;
+    if (body?.newRole !== undefined) {
+      const parsedRole = UserRoleSchema.safeParse(body.newRole);
+      if (!parsedRole.success) throw new ApiError(400, 'الدور غير صالح.');
 
-  // Check if owner by email (code-level override)
-  const isOwner = isOwnerByEmail(user.email);
+      const newRole = parsedRole.data as UserRole;
+      if (!canModifyRole(profile.role as UserRole, targetProfile.role as UserRole)) {
+        throw new ApiError(403, 'صلاحيات غير كافية لتغيير هذا الدور.');
+      }
 
-  if (!isOwner) {
-    const { data: reviewer } = await supabase
+      updateData.role = newRole;
+    }
+
+    if (body?.newStatus !== undefined) {
+      const parsedStatus = UserStatusSchema.safeParse(body.newStatus);
+      if (!parsedStatus.success) throw new ApiError(400, 'حالة المستخدم غير صالحة.');
+
+      const newStatus = parsedStatus.data;
+      if (!canModifyStatus(profile.role as UserRole, targetProfile.role as UserRole, newStatus)) {
+        throw new ApiError(403, 'صلاحيات غير كافية لتغيير حالة هذا المستخدم.');
+      }
+
+      updateData.status = newStatus;
+    }
+
+    if (Object.keys(updateData).length === 1) {
+      throw new ApiError(400, 'يجب تحديد newRole أو newStatus.');
+    }
+
+    const { data, error } = await supabase
       .from('profiles')
-      .select('role')
-      .eq('id', user.id)
+      .update(updateData)
+      .eq('id', userId)
+      .select('id,email,display_name,role,status,created_at,last_login_at')
       .single();
 
-    if (!reviewer || !['مالك', 'إشراف إداري'].includes(reviewer.role)) {
-      return errorResponse('صلاحيات غير كافية.', 403);
-    }
+    if (error) throw new ApiError(500, error.message);
+
+    return NextResponse.json({ success: true, data });
+  } catch (error) {
+    return errorResponse(error instanceof ApiError ? error : new ApiError(500, 'حدث خطأ غير متوقع.'));
   }
-
-  const updateData: any = {};
-  if (newRole) updateData.role = newRole;
-  if (newStatus) updateData.status = newStatus;
-  updateData.updated_at = new Date().toISOString();
-
-  const { error } = await supabase
-    .from('profiles')
-    .update(updateData)
-    .eq('id', userId);
-
-  if (error) return errorResponse(error.message, 500);
-
-  return NextResponse.json({ success: true });
 }

@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSupabase } from '@/supabase/provider';
 import { supabase } from '@/supabase/client';
 import type { UserRole } from '@/lib/supabase-types';
+import AppLayout from '@/app/app-layout';
 
 const AVAILABLE_ROLES: { value: UserRole; label: string; description: string }[] = [
   { value: 'مالك', label: 'مالك', description: 'حساب يتحقق من ملكية المشروع والشركة.' },
@@ -24,41 +25,49 @@ const AVAILABLE_ROLES: { value: UserRole; label: string; description: string }[]
 
 export default function RoleSelection() {
   const [selected, setSelected] = useState<UserRole | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
   const { user, isLoading } = useSupabase();
 
   async function submit() {
     if (!selected) return;
+    setSubmitting(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch('/api/role-change-requests', {
+      if (!session) throw new Error('يجب تسجيل الدخول أولاً.');
+
+      const response = await fetch('/api/role-requests/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session?.access_token}`,
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({ role: selected }),
       });
+
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'تعذر إرسال الطلب.');
       toast({ title: 'تم إرسال الطلب', description: 'طلب تغيير الدور قيد المراجعة.' });
       router.push('/settings');
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'تعذر إرسال الطلب', description: error.message || 'حاول مرة أخرى.' });
+    } finally {
+      setSubmitting(false);
     }
   }
 
   if (isLoading) {
-    return <div className="flex h-screen items-center justify-center">جاري التحميل...</div>;
+    return <AppLayout><div className="flex h-screen items-center justify-center">جاري التحميل...</div></AppLayout>;
   }
 
   if (!user) {
-    return <div className="flex h-screen items-center justify-center">يجب تسجيل الدخول أولاً.</div>;
+    return <AppLayout><div className="flex h-screen items-center justify-center">يجب تسجيل الدخول أولاً.</div></AppLayout>;
   }
 
   return (
-    <Card className="mx-auto mt-12 max-w-xl">
+    <AppLayout>
+      <Card className="mx-auto mt-12 max-w-xl">
       <CardHeader>
         <CardTitle>اختيار الدور الوظيفي</CardTitle>
         <CardDescription>
@@ -82,10 +91,11 @@ export default function RoleSelection() {
             ))}
           </div>
         </RadioGroup>
-        <Button className="w-full" disabled={!selected} onClick={submit}>
-          إرسال طلب
+        <Button className="w-full" disabled={!selected || submitting} onClick={submit}>
+          {submitting ? 'جاري الإرسال...' : 'إرسال طلب'}
         </Button>
       </CardContent>
-    </Card>
+      </Card>
+    </AppLayout>
   );
 }

@@ -3,7 +3,7 @@
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { Header } from "@/components/layout/header";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,28 +20,35 @@ import { supabase } from "@/supabase/client";
 import { useLanguage } from "@/context/language-provider";
 import { Switch } from "@/components/ui/switch";
 
+type CustomerOption = { id: string; name: string; company_name?: string | null };
+
 function AddShipmentForm() {
   const { language, t } = useLanguage();
   const router = useRouter();
   const { toast } = useToast();
   const { user } = useSupabase();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+  const [customers, setCustomers] = useState<CustomerOption[]>([]);
+  const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
+
   const shipmentStatusEnum = z.enum([t.shipmentStatusOption1, t.shipmentStatusOption2, t.shipmentStatusOption4, t.shipmentStatusOption5]);
   const transportTypeEnum = z.enum(['Air', 'Land', 'Sea']);
 
+  const parseNumber = (value: unknown) => typeof value === 'number' ? value : parseFloat(z.string().parse(String(value)));
+  const parseInteger = (value: unknown) => typeof value === 'number' ? value : parseInt(z.string().parse(String(value)), 10);
+
   const shipmentSchema = z.object({
     shipmentType: z.string().min(1, t.formShipmentTypeRequired),
-    weight: z.preprocess((a) => parseFloat(z.string().parse(a)), z.number().positive(t.formWeightPositive)),
+    weight: z.preprocess(parseNumber, z.number().positive(t.formWeightPositive)),
     containerNumber: z.string().min(1, t.formContainerNumberRequired),
     trackingNumber: z.string().min(1, t.formTrackingNumberRequired),
     acidNumber: z.string().optional(),
     carrierDetails: z.string().optional(),
     isTemperatureControlled: z.boolean().default(false),
     transportType: transportTypeEnum,
-    quantity: z.preprocess((a) => parseInt(z.string().parse(a), 10), z.number().int().positive(t.formQuantityPositive)),
+    quantity: z.preprocess(parseInteger, z.number().int().positive(t.formQuantityPositive)),
     price: z.preprocess((a) => parseFloat(z.string().parse(a)), z.number().positive(t.formPricePositive)),
-    customer: z.string().min(1, t.formCustomerRequired),
+    customer_id: z.string().min(1, t.formCustomerRequired),
     status: shipmentStatusEnum,
   });
 
@@ -58,10 +65,37 @@ function AddShipmentForm() {
       transportType: "Sea",
       quantity: 0,
       price: 0,
-      customer: "",
+      customer_id: "",
       status: t.shipmentStatusOption1,
     },
   });
+
+  useEffect(() => {
+    const loadCustomers = async () => {
+      if (!user) {
+        setCustomers([]);
+        return;
+      }
+      setIsLoadingCustomers(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error('No active session');
+        const response = await fetch('/api/customers', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'فشل تحميل العملاء');
+        setCustomers(result.data || []);
+      } catch (error) {
+        console.error('Failed to load customers:', error);
+        setCustomers([]);
+      } finally {
+        setIsLoadingCustomers(false);
+      }
+    };
+
+    loadCustomers();
+  }, [user]);
 
   const handleAddShipment = async (values: z.infer<typeof shipmentSchema>) => {
     if (!user) {
@@ -70,12 +104,18 @@ function AddShipmentForm() {
     }
     setIsSubmitting(true);
     try {
-      const { error } = await supabase
-        .from('shipments')
-        .insert({
-          user_id: user.id,
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No active session');
+
+      const response = await fetch('/api/shipments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
           shipment_type: values.shipmentType,
-          weight: values.weight,
+          weight_kg: values.weight,
           container_number: values.containerNumber,
           tracking_number: values.trackingNumber,
           acid_number: values.acidNumber || null,
@@ -84,11 +124,13 @@ function AddShipmentForm() {
           transport_type: values.transportType,
           quantity: values.quantity,
           price: values.price,
-          customer: values.customer,
+          customer_id: values.customer_id,
           status: values.status,
-        });
+        }),
+      });
 
-      if (error) throw error;
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'فشل إضافة الشحنة');
 
       toast({ title: t.addShipmentSuccessTitle, description: t.addShipmentSuccessDescription });
       form.reset();
@@ -114,8 +156,19 @@ function AddShipmentForm() {
               <FormField control={form.control} name="shipmentType" render={({ field }) => (
                 <FormItem><FormLabel>{t.formShipmentType}</FormLabel><FormControl><Input placeholder={t.formShipmentTypePlaceholder} {...field} /></FormControl><FormMessage /></FormItem>
               )} />
-              <FormField control={form.control} name="customer" render={({ field }) => (
-                <FormItem><FormLabel>{t.formCustomer}</FormLabel><FormControl><Input placeholder={t.formCustomerPlaceholder} {...field} /></FormControl><FormMessage /></FormItem>
+              <FormField control={form.control} name="customer_id" render={({ field }) => (
+                <FormItem><FormLabel>{t.formCustomer}</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl><SelectTrigger><SelectValue placeholder={isLoadingCustomers ? 'جاري تحميل العملاء...' : t.formCustomerPlaceholder} /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      {customers.map((customer) => (
+                        <SelectItem key={customer.id} value={customer.id}>
+                          {customer.company_name || customer.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select><FormMessage />
+                </FormItem>
               )} />
               <FormField control={form.control} name="trackingNumber" render={({ field }) => (
                 <FormItem><FormLabel>{t.formTrackingNumber}</FormLabel><FormControl><Input placeholder={t.formTrackingNumberPlaceholder} {...field} /></FormControl><FormMessage /></FormItem>
@@ -177,9 +230,9 @@ function AddShipmentForm() {
                   </FormItem>
               )} />
             </div>
-            <Button type="submit" className="w-full md:w-auto" disabled={isSubmitting}>
+            <Button type="submit" className="w-full md:w-auto" disabled={isSubmitting || isLoadingCustomers}>
               {isSubmitting && <Loader2 className="mx-2 h-4 w-4 animate-spin" />}
-              {t.addShipmentButton}
+              {isSubmitting ? t.addShipmentButton : t.addShipmentButton}
             </Button>
           </form>
         </Form>

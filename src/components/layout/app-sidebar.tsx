@@ -40,7 +40,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { isOwnerByEmail as checkOwnerByEmail } from '@/lib/access-control';
 
 
 const supportedLanguages = [
@@ -54,10 +53,7 @@ export function AppSidebar() {
 const { toast } = useToast();
   const pathname = usePathname();
 
-  // CRITICAL OWNER IDENTITY - Check by email in code level
-  const isOwnerByEmail = checkOwnerByEmail(user?.email);
-
-  // Fetch profile via API to bypass RLS
+  // Fetch profile via authenticated API for authoritative role data
   const [sidebarProfile, setSidebarProfile] = useState<any>(null);
   
   useEffect(() => {
@@ -79,12 +75,11 @@ const { toast } = useToast();
     fetchProfile();
   }, [user]);
 
-// For admin check, use sidebarProfile from API
   const hasAdminRole = sidebarProfile?.role && ['مالك', 'إشراف إداري', 'موظف'].includes(sidebarProfile.role);
-  const isAdmin = isOwnerByEmail || hasAdminRole;
+  const isAdmin = hasAdminRole;
 
   // For display: prefer profile data from API, fallback to user_metadata, then email
-  const displayName = sidebarProfile?.display_name || user?.user_metadata?.display_name || user?.email?.split('@')[0] || (isOwnerByEmail ? 'مالك' : 'مستخدم');
+  const displayName = sidebarProfile?.display_name || user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'مستخدم';
 
   // For avatar fallback
   const avatarLetter = sidebarProfile?.display_name?.[0]?.toUpperCase() ?? user?.email?.[0]?.toUpperCase() ?? 'U';
@@ -107,10 +102,7 @@ const { toast } = useToast();
   };
 
   const getRoleDisplay = (): string => {
-    if (isOwnerByEmail) {
-      return 'مالك';
-    }
-    if (userProfile?.role) {
+    if (sidebarProfile?.role) {
       const roleMap: Record<string, string> = {
         'مالك': 'مالك',
         'إشراف إداري': 'إشراف إداري',
@@ -121,7 +113,7 @@ const { toast } = useToast();
         'مستخدم مسجل': 'مستخدم مسجل',
         'زائر': 'زائر',
       };
-      return roleMap[userProfile.role] || userProfile.role;
+      return roleMap[sidebarProfile.role] || sidebarProfile.role;
     }
     return 'مستخدم';
   };

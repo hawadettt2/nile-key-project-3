@@ -1,12 +1,19 @@
 
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import { isOpenRoute, isPublicApiRoute, isRoleAllowedForPath, normalizeRole, isOwnerByEmail } from '@/lib/access-control';
+import { isOpenRoute, isPublicApiRoute, isRoleAllowedForPath, normalizeRole } from '@/lib/access-control';
+
+const VERIFY_EMAIL_PATH = '/login?verify=true';
+
+function isVerifyEmailPath(pathname: string, search: string): boolean {
+  return pathname === '/login' && search.includes('verify=true');
+}
 
 export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const search = request.nextUrl.search;
 
-  if (isOpenRoute(pathname) || isPublicApiRoute(pathname) || pathname.startsWith('/_next/')) {
+  if (isOpenRoute(pathname) || isPublicApiRoute(pathname) || pathname.startsWith('/_next/') || isVerifyEmailPath(pathname, search)) {
     return NextResponse.next({ request: { headers: request.headers } });
   }
 
@@ -26,12 +33,10 @@ export async function updateSession(request: NextRequest) {
       },
       set(name: string, value: string, options: CookieOptions) {
         request.cookies.set({ name, value, ...options });
-        response = NextResponse.next({ request: { headers: request.headers } });
         response.cookies.set({ name, value, ...options });
       },
       remove(name: string, options: CookieOptions) {
         request.cookies.set({ name, value: '', ...options });
-        response = NextResponse.next({ request: { headers: request.headers } });
         response.cookies.set({ name, value: '', ...options });
       },
     },
@@ -40,14 +45,12 @@ export async function updateSession(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ success: false, error: 'غير مصرح.' }, { status: 401 });
+    }
+
     const redirectUrl = new URL('/login', request.url);
     return NextResponse.redirect(redirectUrl);
-  }
-
-  // Code-level owner check - bypasses database role requirement
-  if (isOwnerByEmail(user.email)) {
-    // Owner detected by email - grant full access
-    return response;
   }
 
   let role = normalizeRole(user.user_metadata?.role);
@@ -64,17 +67,12 @@ export async function updateSession(request: NextRequest) {
       role = profile.role;
     }
 
-    // Owner bypasses all restrictions
-    if (isOwnerByEmail(user.email)) {
-      return response;
-    }
-
     if (profile?.status && ['suspended', 'rejected'].includes(profile.status)) {
       return NextResponse.redirect(new URL('/unauthorized', request.url));
     }
 
     if (!profile?.email_verified && pathname !== '/login') {
-      return NextResponse.redirect(new URL('/login?verify=true', request.url));
+      return NextResponse.redirect(new URL(VERIFY_EMAIL_PATH, request.url));
     }
   } catch (error) {
     console.error('Middleware profile fetch error:', error);

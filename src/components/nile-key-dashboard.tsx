@@ -36,6 +36,7 @@ export default function NileKeyDashboard() {
     supabase,
     'shipments',
     user?.id,
+    undefined,
     'created_at',
     'desc'
   );
@@ -44,6 +45,7 @@ export default function NileKeyDashboard() {
     supabase,
     'customers',
     user?.id,
+    undefined,
     'created_at',
     'desc'
   );
@@ -52,6 +54,7 @@ export default function NileKeyDashboard() {
     supabase,
     'employee_tasks',
     user?.id,
+    undefined,
     'created_at',
     'desc'
   );
@@ -60,6 +63,7 @@ export default function NileKeyDashboard() {
     supabase,
     'export_alerts',
     user?.id,
+    undefined,
     'created_at',
     'desc'
   );
@@ -68,6 +72,7 @@ export default function NileKeyDashboard() {
     supabase,
     'export_opportunities',
     user?.id,
+    undefined,
     'created_at',
     'desc'
   );

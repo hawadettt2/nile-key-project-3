@@ -1,5 +1,5 @@
 -- Nile-Key3 Database Schema v2.0 (Export Platform)
--- Advanced RBAC + RLS + AI-Powered Export Management
+-- Advanced RBAC + RLS + Export Management
 -- Migration: Email/Password Only Authentication, Enhanced Export Features
 
 -- Enable necessary extensions
@@ -768,19 +768,12 @@ BEGIN
   VALUES (
     NEW.id,
     NEW.email,
-    CASE
-      WHEN NEW.email IN ('hawadettt@gmail.com', 'hawadettt2@gmail.com') THEN 'مالك'::public.user_role
-      ELSE 'مستخدم مسجل'::public.user_role
-    END,
+    'مستخدم مسجل'::public.user_role,
     'active',
-    true
+    false
   )
   ON CONFLICT (id) DO UPDATE SET
-    role = CASE
-      WHEN EXCLUDED.email IN ('hawadettt@gmail.com', 'hawadettt2@gmail.com') THEN 'مالك'::public.user_role
-      ELSE profiles.role
-    END,
-    email_verified = true,
+    email_verified = profiles.email_verified,
     updated_at = NOW();
   RETURN NEW;
 END;
@@ -881,16 +874,9 @@ ON CONFLICT (code) DO NOTHING;
 UPDATE public.profiles 
 SET role = 'مستخدم مسجل'::public.user_role,
     status = 'active', 
-    email_verified = true
+    email_verified = false
 WHERE role::text NOT IN ('مالك', 'إشراف إداري', 'موظف', 'مستورد', 'مورد', 'مصدر', 'مستخدم مسجل', 'زائر')
    OR role IS NULL;
-
--- Force owner for specific emails
-UPDATE public.profiles 
-SET role = 'مالك'::public.user_role,
-    status = 'active', 
-    email_verified = true
-WHERE email IN ('hawadettt@gmail.com', 'hawadettt2@gmail.com');
 
 -- =====================================================
 -- ADD FOREIGN KEY CONSTRAINTS (After all tables exist)
@@ -920,17 +906,3 @@ END $$;
 -- =====================================================
 -- END OF SCHEMA
 -- =====================================================
-
--- =====================================================
--- OWNER ACCOUNT VERIFICATION (Run after schema)
--- Ensures owner accounts exist with correct role
--- =====================================================
-DO $$ 
-BEGIN
-  -- Ensure owner profiles exist and have correct role
-  IF EXISTS (SELECT 1 FROM auth.users WHERE email IN ('hawadettt@gmail.com', 'hawadettt2@gmail.com')) THEN
-    UPDATE public.profiles 
-    SET role = 'مالك', status = 'active', email_verified = true
-    WHERE email IN ('hawadettt@gmail.com', 'hawadettt2@gmail.com');
-  END IF;
-END $$;

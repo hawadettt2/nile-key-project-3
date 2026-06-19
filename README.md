@@ -100,16 +100,25 @@
    ```
 
 4. **Database Setup:**
-   - Go to your Supabase Dashboard
-   - Open SQL Editor
-   - Copy contents of `schema.sql`
-   - Click "Run"
+   Run migrations in this exact order in Supabase SQL Editor:
+   ```sql
+   schema.sql
+   src/migrations/rbac-hardening.sql
+   migrations/01-audit-triggers.sql
+   ```
+
+   Or generate a combined reviewed bundle:
+   ```powershell
+   npm run supabase:migrations:bundle
+   ```
+
+   Review the generated `dist/supabase-combined-migrations.sql`, then run it in Supabase SQL Editor.
 
 5. **Run the development server:**
    ```bash
    npm run dev
    ```
-   Open [http://localhost:3000](http://localhost:3000)
+   Open [http://localhost:9002](http://localhost:9002)
 
 ---
 
@@ -124,14 +133,46 @@
 ---
 
 ### 📦 Deployment to Vercel
-1. Connect your GitHub repository to Vercel
-2. Add Environment Variables in Vercel project settings
-3. Deploy!
+1. Validate environment and security hygiene:
+   ```powershell
+   npm run validate:env
+   npm run security:check
+   ```
 
-```bash
-# Install Vercel CLI (optional)
-npm i -g vercel
+2. Commit and push:
+   ```powershell
+   git add .
+   git commit -m "chore: harden RBAC, audit logging, and deployment docs"
+   git push origin main
+   ```
 
-# Deploy
-vercel --prod
-```
+3. Apply Supabase migrations in order, or use the combined reviewed bundle:
+   ```powershell
+   npm run supabase:migrations:bundle
+   ```
+
+   Review `dist/supabase-combined-migrations.sql`, then run it in Supabase SQL Editor.
+
+4. Configure Vercel environment variables:
+   - `NEXT_PUBLIC_SUPABASE_URL` = Supabase project URL
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = Supabase anon/public key
+   - `SUPABASE_SERVICE_ROLE_KEY` = Supabase service role key
+   - `RESEND_API_KEY`, `RESEND_AUDIENCE`, `EMAIL_FROM` for email verification
+   - `NEXT_PUBLIC_SITE_URL` = production domain
+
+5. Deploy:
+   ```powershell
+   npx.cmd vercel pull
+   npx.cmd vercel build
+   npx.cmd vercel deploy --prod
+   ```
+
+6. Post-deploy integrity checks:
+   - Login/register works
+   - New profile is created
+   - Email verification request and confirmation work
+   - Role request creation/review works
+   - Non-admin cannot access admin routes
+   - Suspended/rejected users are blocked
+   - Audit logs are created and immutable
+   - No service role key appears in browser bundles or network requests

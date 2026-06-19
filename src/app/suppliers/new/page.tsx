@@ -51,28 +51,35 @@ function AddSupplierForm() {
         },
     });
 
-    const handleAddSupplier = async (values: z.infer<typeof supplierSchema>) => {
+    const handleSubmit = async (values: z.infer<typeof supplierSchema>) => {
         if (!user) {
           toast({ variant: 'destructive', title: t.authErrorTitle, description: t.authErrorDescription });
           return;
         }
         setIsSubmitting(true);
         try {
-          const { error } = await supabase
-            .from('suppliers')
-            .insert({
-              user_id: user.id,
-              farm_name: values.farmName,
-              codification_code: values.codificationCode || null,
-              crop_varieties: values.cropVarieties,
-              certification_status: values.certificationStatus,
-              location: values.location,
-              gps_location: values.gpsLocation || null,
-              capacity: values.capacity || null,
-              contact_number: values.contactNumber,
-            });
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) throw new Error('No active session');
 
-          if (error) throw error;
+          const response = await fetch('/api/suppliers', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              name: values.farmName,
+              contact_person: values.cropVarieties.join(', '),
+              email: null,
+              phone: values.contactNumber,
+              address: values.location,
+              governorate: values.certificationStatus.join(', '),
+              is_nfsa_whitelisted: false,
+            }),
+          });
+
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || 'فشل إضافة المورد');
 
           toast({ title: t.addSupplierSuccessTitle, description: t.addSupplierSuccessDescription });
           form.reset();
@@ -95,7 +102,7 @@ function AddSupplierForm() {
             </CardHeader>
             <CardContent>
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleAddSupplier)} className="space-y-4">
+                <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                     <FormField control={form.control} name="farmName" render={({ field }) => (
                         <FormItem><FormLabel>{t.formFarmName}</FormLabel><FormControl><Input placeholder={t.formFarmNamePlaceholder} {...field} /></FormControl><FormMessage /></FormItem>

@@ -11,6 +11,7 @@ import { supabase } from '@/supabase/client';
 import { useSupabase } from '@/supabase/provider';
 import { useToast } from '@/hooks/use-toast';
 import type { UserRole } from '@/lib/supabase-types';
+import AppLayout from '@/app/app-layout';
 
 interface UserWithProfile {
   id: string;
@@ -124,8 +125,20 @@ export default function AdminDashboard() {
     if (!confirm('Are you sure you want to reject this user? This action cannot be undone.')) return;
     setIsUpdating(userId);
     try {
-      const { error } = await supabase.from('profiles').update({ status: 'rejected' }).eq('id', userId);
-      if (error) throw error;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No active session');
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ userId, newStatus: 'rejected' }),
+      });
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Failed to reject user');
+      }
       toast({ title: 'User Rejected', description: 'User has been rejected and cannot login' });
       fetchUsers();
     } catch (error: any) {
@@ -155,11 +168,12 @@ export default function AdminDashboard() {
   };
 
   if (isUserLoading || !user) {
-    return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+    return <AppLayout><div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div></AppLayout>;
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <AppLayout>
+      <div className="flex flex-col gap-6">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between gap-4">
@@ -253,5 +267,6 @@ export default function AdminDashboard() {
         </CardContent>
       </Card>
     </div>
+  </AppLayout>
   );
 }

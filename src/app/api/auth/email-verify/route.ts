@@ -1,23 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminSupabaseClient, ApiError, getActor, requireActiveActor, requireEmailVerified } from '@/lib/api-auth';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-function createAdminClient() {
-  if (!supabaseUrl || !serviceRoleKey) {
-    return null;
-  }
-
-  return createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      persistSession: false,
-    },
-  });
+function errorResponse(error: ApiError) {
+  return NextResponse.json({ success: false, error: error.message }, { status: error.status });
 }
 
 function generateVerificationCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  const array = new Uint32Array(1);
+  crypto.getRandomValues(array);
+  return (array[0] % 1000000).toString().padStart(6, '0');
+}
+
+async function hashVerificationCode(code: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(code));
+  return Buffer.from(digest).toString('base64url');
+}
+
+async function isVerificationCodeMatch(storedCode: string | null, code: string): Promise<boolean> {
+  if (!storedCode) return false;
+  const hash = await hashVerificationCode(code);
+  return storedCode === hash || storedCode === code;
 }
 
 function getExpiryTime(): string {
@@ -26,157 +28,124 @@ function getExpiryTime(): string {
   return expiry.toISOString();
 }
 
+async function sendVerificationEmail(email: string, code: string) {
+  const resendApiKey = process.env.RESEND_API_KEY;
+  const resendAudience = process.env.RESEND_AUDIENCE;
+  const from = process.env.EMAIL_FROM || 'Nile-Key <no-reply@nile-key.local>';
+
+  if (!resendApiKey || !resendAudience) {
+    console.warn('[email-verify] SMTP/Resend not configured; code generated for local development only.');
+    return {
+      localDevelopmentCode: code,
+      configured: false,
+    };
+  }
+
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${resendApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from,
+      to: [resendAudience],
+      subject: 'رمز التحقق من البريد - Nile-Key',
+      html: `<p>رمز التحقق الخاص بك هو: <strong>${code}</strong></p><p>يرجى إدخاله في التطبيق خلال 10 دقائق.</p>`,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new ApiError(500, `فشل إرسال البريد الإلكتروني: ${response.status}`);
+  }
+
+  return { configured: true };
+}
+
 export async function POST(request: NextRequest) {
-  const adminSupabase = createAdminClient();
-  if (!adminSupabase) {
-    return NextResponse.json(
-      { error: 'Server configuration missing' },
-      { status: 500 }
-    );
-  }
-
-  // Require authentication
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader) {
-    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-  }
-
-  const token = authHeader.replace('Bearer ', '');
-  const { data: { user } } = await adminSupabase.auth.getUser(token);
-  if (!user) {
-    return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
-  }
-
   try {
+    const { user, profile } = await getActor(request);
+    requireActiveActor(profile);
+
     const body = await request.json();
     const email = typeof body?.email === 'string' ? body.email.trim() : user.email;
 
-    if (!email) {
-      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
-    }
+    if (!email) throw new ApiError(400, 'Email is required');
+    if (user.email && email.toLowerCase() !== user.email.toLowerCase()) throw new ApiError(403, 'لا يمكن طلب رمز التحقق لبريد آخر.');
 
     const verificationCode = generateVerificationCode();
+    const hashedCode = await hashVerificationCode(verificationCode);
     const expiryTime = getExpiryTime();
+    const emailResult = await sendVerificationEmail(email, verificationCode);
 
-    const { data: existingProfile, error: fetchError } = await adminSupabase
+    const { data: existingProfile, error: fetchError } = await createAdminSupabaseClient()
       .from('profiles')
       .select('id, email_verified')
       .eq('email', email)
-      .single();
+      .maybeSingle();
 
-    if (fetchError && fetchError.code !== 'PGRST116') {
-      return NextResponse.json({ error: fetchError.message }, { status: 500 });
-    }
-
+    if (fetchError) throw new ApiError(500, fetchError.message);
     if (existingProfile?.email_verified) {
-      return NextResponse.json(
-        { message: 'Email already verified' },
-        { status: 200 }
-      );
+      return NextResponse.json({ success: true, message: 'Email already verified' });
+    }
+    if (!existingProfile || existingProfile.id !== user.id) {
+      throw new ApiError(404, 'User not found');
     }
 
-    if (existingProfile) {
-      const { error: updateError } = await adminSupabase
-        .from('profiles')
-        .update({
-          verification_code: verificationCode,
-          verification_code_expires_at: expiryTime,
-        })
-        .eq('id', existingProfile.id);
+    const { error: updateError } = await createAdminSupabaseClient()
+      .from('profiles')
+      .update({ verification_code: hashedCode, verification_code_expires_at: expiryTime })
+      .eq('id', existingProfile.id);
 
-      if (updateError) {
-        return NextResponse.json({ error: updateError.message }, { status: 500 });
-      }
-    }
+    if (updateError) throw new ApiError(500, updateError.message);
 
-return NextResponse.json({
+    return NextResponse.json({
       success: true,
       message: 'Verification code sent',
-      dev_code: verificationCode,
+      emailSent: emailResult.configured,
+      ...(process.env.NODE_ENV === 'development' && !emailResult.configured ? { localDevelopmentCode: emailResult.localDevelopmentCode } : {}),
     });
-  } catch (error: any) {
-    console.error('Email verification error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return errorResponse(error instanceof ApiError ? error : new ApiError(500, 'Internal server error'));
   }
 }
 
 export async function PUT(request: NextRequest) {
-  const adminSupabase = createAdminClient();
-  if (!adminSupabase) {
-    return NextResponse.json(
-      { error: 'Server configuration missing' },
-      { status: 500 }
-    );
-  }
-
   try {
+    const { user, profile } = await getActor(request);
+    requireActiveActor(profile);
+
+    const adminSupabase = createAdminSupabaseClient();
     const body = await request.json();
-    const email = typeof body?.email === 'string' ? body.email.trim() : '';
+    const email = typeof body?.email === 'string' ? body.email.trim() : user.email || '';
     const code = typeof body?.code === 'string' ? body.code.trim() : '';
 
-    if (!email || !code) {
-      return NextResponse.json(
-        { error: 'Email and verification code are required' },
-        { status: 400 }
-      );
-    }
+    if (!email || !code) throw new ApiError(400, 'Email and verification code are required');
+    if (user.email && email.toLowerCase() !== user.email.toLowerCase()) throw new ApiError(403, 'لا يمكن التحقق من بريد آخر.');
 
-    const now = new Date().toISOString();
-
-    const { data: profile, error: fetchError } = await adminSupabase
+    const { data: profileRow, error: fetchError } = await adminSupabase
       .from('profiles')
-      .select('id, verification_code, verification_code_expires_at, email_verified')
-      .eq('email', email)
+      .select('id, verification_code, verification_code_expires_at, email_verified, status')
+      .eq('id', user.id)
       .single();
 
-    if (fetchError) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    if (profile.email_verified) {
-      return NextResponse.json(
-        { message: 'Email already verified' },
-        { status: 200 }
-      );
-    }
-
-    if (!profile.verification_code || profile.verification_code !== code) {
-      return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 });
-    }
-
-    if (
-      profile.verification_code_expires_at &&
-      new Date(profile.verification_code_expires_at) < new Date()
-    ) {
-      return NextResponse.json({ error: 'Verification code expired' }, { status: 400 });
+    if (fetchError) throw new ApiError(404, 'User not found');
+    if (profileRow.status === 'rejected') throw new ApiError(403, 'الحساب مرفوض.');
+    if (profileRow.email_verified) return NextResponse.json({ success: true, message: 'Email already verified' });
+    if (!(await isVerificationCodeMatch(profileRow.verification_code, code))) throw new ApiError(400, 'Invalid verification code');
+    if (profileRow.verification_code_expires_at && new Date(profileRow.verification_code_expires_at) < new Date()) {
+      throw new ApiError(400, 'Verification code expired');
     }
 
     const { error: updateError } = await adminSupabase
       .from('profiles')
-      .update({
-        email_verified: true,
-        verification_code: null,
-        verification_code_expires_at: null,
-        status: 'active',
-      })
-      .eq('id', profile.id);
+      .update({ email_verified: true, verification_code: null, verification_code_expires_at: null, status: profileRow.status ?? 'active' })
+      .eq('id', profileRow.id);
 
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
-    }
+    if (updateError) throw new ApiError(500, updateError.message);
 
-    return NextResponse.json({
-      success: true,
-      message: 'Email verified successfully',
-    });
-  } catch (error: any) {
-    console.error('Verify code error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: true, message: 'Email verified successfully' });
+  } catch (error) {
+    return errorResponse(error instanceof ApiError ? error : new ApiError(500, 'Internal server error'));
   }
 }
